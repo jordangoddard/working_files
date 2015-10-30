@@ -343,8 +343,7 @@ class PlayblastOld:
     #  @param percent Scale of playblast window vs what's in the DB
     #  @param textured Perform playblast with textures on?
     #  @param dynamics_enabled Playblast with dynamics on?
-    def execute(self, percent=100, textured=False, 
-                dynamics_enabled=False, create_version=False, comment=None, batch=False):
+    def execute(self, percent=100, textured=False, dynamics_enabled=False, create_version=False, comment=None, batch=False):
 
         debug = 0
 
@@ -600,7 +599,7 @@ class PlayblastOld:
 
         self.min_frame = int(playbackOptions(minTime=True, query=True))
         self.max_frame = int(playbackOptions(maxTime=True, query=True))
-        
+
     def playback(self, movie=False):
         # Playback the image files output by the playblast - "fix" the gamma,
         # and set the FPS based on the show

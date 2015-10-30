@@ -1,0 +1,62 @@
+##################################################################################################
+#                                                                                                #
+#                                  Breakout Tool Instructions                                    #
+#                                                                                                #
+##################################################################################################
+                                                                                                  
+################################                                                                  
+#### What you need to know: ####                                                                  
+################################                                                                  
+                                                                                                  
+    The breakout tool is a stand alone tool that will gather all shot data for a given list of    
+shots and sequences and then create new blender files for each shot that have updated links to the
+published assets, as well as high res assets, and have been cleaned of an junk that is left in the
+scene by the last department.                                                                     
+    The breakout tool is only to be used once each shot that is set for breakout has been checked 
+by the 'Integrity Checker', and all objects in each shot have been cleaned up, and unlinked assets
+are put in the 'grp.stuff' group.                                                                 
+    The beakout tool will always create a new directory in C:\Temp, provided you do not already   
+have such a directory. The directory will be titled 'breakout_tool_data' and will contain three   
+sub directories; 'error_logs', 'asset_logs', 'blender_files'. The tool will also create a .txt    
+file called 'breakout_log' from which the tool will read froml, provided the file does not already
+exist. If the directories or the 'breakout_log.txt' already exist, the tool will not overwrite    
+them.                                                                                             
+                                                                                                  
+                                                                                                  
+##############################                                                                    
+#### How to use the tool: ####                                                                    
+##############################                                                                    
+                                                                                                  
+    The breakout tool requires the above stated 'breakout_log.txt', in order to run. If this is   
+your first time using the tool, or you do not have the 'breakout_log.txt' in the directory        
+'C:\Temp\breakout_tool_data', please start at step 1. If you have run the breakout tool, proceed  
+to step 3, otherwise start at step 1.                                                             
+                                                                                                  
+Step 1: Reinstall Pipeline:                                                                       
+    Double click the 'Install Pipeline' shortcut on your desktop. This will reinstall pipeline on 
+your computer, so you should ensure that you have saved and clased any blender files.             
+                                                                                                  
+Step 2: Run Breakout Tool:                                                                        
+    Double click the 'breakout_launcher.bat' application in C:\pipeline\non_client\breakout. This 
+will open a command prompt. Press 'n' and then press 'ENTER' twice.                               
+                                                                                                  
+Step 3: Check Breakout Log:                                                                       
+    Open the file 'breakout_log.txt' in the directory 'C:\Temp\breakout_tool_data', and ensure    
+that the files that you want to breakout are listed in the file. The format for the file is to    
+have the first line of the file being 'file=' the file path to the master (sequence) file,        
+followed by each line having one shot in that master that is to be broken out. If multiple        
+sequences are to be broken out follow the above format below the last entry of the first sequence.
+NOTE: Do not leave blank lines between groups of sequence/shots.                                  
+                                                                                                  
+Step 4: Running the tool                                                                          
+    Double click the 'breakout_launcher.bat' application in C:\pipeline\non_client\breakout. This 
+will open a command prompt. If the printed files in the prompt match the file list to breakout,   
+press 'y' and then 'ENTER'. If they do not match, please press 'n' and 'ENTER', and return to     
+step 3.                                                                                           
+                                                                                                  
+Step 5: Retrieve breakout:                                                                        
+    Navigate to the directory 'C:\Temp\breakout_tool_data'. In this folder, the breakout files    
+will reside in the 'blender_files' subfolder, named based on the scene names of the master file.  
+If the names are confusing, please change then names in the master file and re-run the breakout.  
+                                                                                                  
+                                                                                    

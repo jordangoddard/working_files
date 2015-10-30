@@ -1,7 +1,9 @@
+from core import log, asset
+
 class asset(object):
-    def _init_(self):
-        # all the stuff that the asset has
-        pass
+    def _init_(self, asset, log):
+        self.asset = asset
+        self.log = log
 
 class playblast(object):
     def _init_(self, asset):
@@ -20,7 +22,21 @@ class playblast(object):
         pass
 
     def create_playblast_window(self):
+        area = bpy.context.area
+        screen_ops = bpy.ops.screen
+        area.type = 'VIEW_3D'                                                                           # Changes Current area to 3D View
+        screen_ops.screen_full_area()                                                                   # Make active screen fill the window.
         pass
+
+    def set_output_settings(self):
+        pass
+
+    def render_open_gl(self):
+        pass
+
+    
+
+
 
     def encode_via_rvio(self):
         pass

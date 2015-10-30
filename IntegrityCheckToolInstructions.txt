@@ -1,0 +1,134 @@
+##################################################################################################
+#                                                                                                #
+#                                 Integrity Checker Instructions                                 #
+#                                    Stand Alone Tool Version                                    #
+#                                                                                                #
+##################################################################################################
+                                                                                                  
+################################                                                                  
+#### What you need to know: ####                                                                  
+################################                                                                  
+                                                                                                  
+    The integrity check tool is a stand alone tool that will gather all shot data for a given list
+of sequences and then create error logs and asset lists for each sequence. The error logs that the
+tool creates will indicate the current issues in the scene that would prevent the breakout from   
+working properly. If there are no errors in a given shot of a given sequence, the log will show   
+the name of the shot, with nothing below, followed by the next shot in the sequence. If there are 
+errors for a shot that is suposed to be broken out, please return the sequence to the department  
+that created it, so that they can fix the issues in the sequence.                                 
+    The integrity check tool is only to be used if the user wishes to check every shot in a       
+sequence or set of sequences, and if the shots in each sequence are named correctly. Failure to   
+follow these guidlines will result in imperfect results, such as miss-named logs.                 
+    The integrity checker tool will always create a new directory in C:\Temp, provided you do not 
+already have such a directory. The directory will be titled 'breakout_tool_data' and will contain 
+three sub directories; 'error_logs', 'asset_logs', 'blender_files'. The tool will also create a   
+'.txt' file called 'breakout_log' from which the tool will read from, provided the file does not  
+already exist. If the directories or the 'breakout_log.txt' already exist, the tool will not      
+overwrite them.                                                                                   
+                                                                                                  
+                                                                                                  
+##############################                                                                    
+#### How to use the tool: ####                                                                    
+##############################                                                                    
+                                                                                                  
+    The integrity check tool requires the above stated 'breakout_log.txt', in order to run. If    
+this is your first time using the tool, or you do not have the 'breakout_log.txt' in the directory
+'C:\Temp\breakout_tool_data', please start at step 1. If you have run the integrity check tool,   
+proceed to step 3, otherwise start at step 1.                                                     
+                                                                                                  
+Step 1: Reinstall Pipeline:                                                                       
+    Double click the 'Install Pipeline' shortcut on your desktop. This will reinstall pipeline on 
+your computer, so you should ensure that you have saved and clased any blender files.             
+                                                                                                  
+Step 2: Run Integrity Check Tool:                                                                 
+    Double click the 'check_launcher.bat' application in C:\pipeline\non_client\integrity_check.  
+This will open a command prompt. Press 'n' and then press 'ENTER' twice.                          
+                                                                                                  
+Step 3: Check Breakout Log:                                                                       
+    Open the file 'breakout_log.txt' in the directory 'C:\Temp\breakout_tool_data', and ensure    
+that the files that you want to breakout are listed in the file. The format for the file is to    
+have each of the sequences that you want to check on a separate line. each sequence should be     
+listed as 'file=' and then the path to the sequence master file that is to be reviewed.           
+NOTE: Do not leave blank lines between sequences.                                                 
+                                                                                                  
+Step 4: Running the tool                                                                          
+    Double click the 'check_launcher.bat' application in C:\pipeline\non_client\integrity_check.  
+This will open a command prompt. If the printed files in the prompt match the file list to check, 
+press 'y' and then 'ENTER'. If they do not match, please press 'n' and 'ENTER', and return to     
+step 3.                                                                                           
+                                                                                                  
+Step 5: Retrieve the logs:                                                                        
+    Navigate to the directory 'C:\Temp\breakout_tool_data'. In this folder, the error logs will   
+reside in the 'error_logs' subfolder, named based on the scene names of the master file, and the  
+asset logs will reside in the 'error_logs' subfolder, named based on the scene names of the master
+file. If the names are confusing, please change then names in the master file and re-run the check
+                                                                                                  
+                                                                                                  
+                                                                                                  
+##################################################################################################
+#                                                                                                #
+#                                Integrity Checker Instructions                                  #
+#                                        Addon Version                                           #
+#                                                                                                #
+##################################################################################################
+                                                                                                  
+################################                                                                  
+#### What you need to know: ####                                                                  
+################################                                                                  
+                                                                                                  
+    The integrity checker addon is a blender addon that will gather error log data and asset lists
+based on user input. The error logs that the addon creates will indicate the current issues in the
+scene that would prevent the breakout from working properly. If there are no errors in a given    
+shot of a given sequence, the log will show the name of the shot, with nothing below, followed by 
+the next shot in the sequence. If there are errors for a shot that is suposed to be broken out,   
+please return the sequence to the department that created it, so that they can fix the issues in  
+the sequence.                                                                                     
+    The integrity check addon is only to be used from inside of blender, and only if the user has 
+already saved their work. Additionally, the shots in each sequence must be named correctly.       
+Failure to follow these guidlines will result in imperfect results, such as miss-named logs.      
+    The integrity checker addon will always create a new directory in C:\Temp, provided you do not
+already have such a directory. The directory will be titled 'breakout_tool_data' and will contain 
+three sub directories; 'error_logs', 'asset_logs', 'blender_files'. The addon will, on run, pull  
+the newly created error logs and asset lists directly into blender and present them to the user.  
+                                                                                                  
+                                                                                                  
+###############################                                                                   
+#### How to use the addon: ####                                                                   
+###############################                                                                   
+                                                                                                  
+Step 1: Reinstall Pipeline:                                                                       
+    Double click the 'Install Pipeline' shortcut on your desktop. This will reinstall pipeline on 
+your computer, so you should ensure that you have saved and clased any blender files, and that    
+blender is not open.                                                                              
+                                                                                                  
+Step 2: Open the file that you wish to check:                                                     
+    Open blender and either append one or more shots that you wish to check, or open the master   
+file of the sequence that you wish to check.                                                      
+                                                                                                  
+Step 3: Ensure that the addon is enabled:                                                         
+    Press 'File', 'User Prefrences...'. This should open a new window titled 'Blender User        
+Prefrences'. In this new window, press the 'Add-ons' tab, then under 'Tangent' on the left        
+navigation bar, select 'Tangent: Tangent: Integriy Checker', and check the check-box. You can now 
+save the user settings by clicking 'Save User Settings' at the bottom of the window, and close the
+window, or just close the window by pressing the 'X' at the top right of the window. This should  
+result in you being back at the orginal window of your blender file.                              
+                                                                                                  
+Step 4: Running the tool                                                                          
+    When you want to run the integrity checker, open the '3D View', and the 'Tools' panel on the  
+left of the '3D View' panel or window. Select the 'Tangent' tab, and then the 'Integrity Checker' 
+drop down menu. Once the menu is visalbe, you should have two button options. The first is 'Check 
+Current Shot'. If you press this button, the addon will check the integrity of just the current   
+shot, and print the results in the '3D view' panel or window. If you select the second options,   
+'Check All Shots', the addon will check the integrity of all the shots in the current '.blend'    
+file, and print the results on the '3D View'.                                                     
+                                                                                                  
+Step 5: View the logs:                                                                        
+    All the logs for the Checks that you run inside of blender should be stored in the 'Text      
+Editor' panel of the '.blend' file that you ran the check in. If you wish to find the generated   
+logs, proceed to step 6.                                                                          
+                                                                                                  
+Step 5: Retrieve the logs:                                                                        
+    Navigate to the directory 'C:\Temp\breakout_tool_data'. In this folder, the error logs will   
+reside in the 'error_logs' subfolder, named based on the scene names of the master file, and the  
+asset logs will reside in the 'error_logs' subfolder, named based on the scene names of the master
+file. If the names are confusing, please change then names in the master file and re-run the check
