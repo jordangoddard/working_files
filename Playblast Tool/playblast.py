@@ -93,7 +93,7 @@ class MovieFile:                                                              # 
         return locals()                                                                                                                                                                                                                                                             
     shotfile = property(**shotfile())                                                                                                               # This will come from the asset manager                             # self.shotfile = self.asset.file                           **SAME
 
-    def encode(self):                                                                                                                               # This will encode the data from python to json for the database                                                                
+    def encode(self):                                                          # This will encode the data from python to json for the database                                                                
         '''
         Encode for API - only the list view URL and some small pieces of info required.
         '''

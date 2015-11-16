@@ -1,0 +1,10 @@
+what do i need?
+
+    render
+        Open GL window
+        Set up render output settings
+        Render open GL
+
+    modify the render with rivo
+
+    save final product to DB
