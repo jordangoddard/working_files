@@ -332,8 +332,8 @@ class Playblast(object):
         self.frame_start = 1                                        # self.asset.start_frame
         self.frame_end = 10                                         # self.asset.end_frame
         
-        #self.rv_support_path = "C:\\pipeline\\rv\\rv-win64-x86-64-current\\rv-win64-x86-64-6.2.2\\bin"
-        self.rv_support_path = "C:\pipeline\rv\RV-3.12.19-32\bin"
+        self.rv_support_path = "C:\\pipeline\\rv\\rv-win64-x86-64-current\\rv-win64-x86-64-6.2.2\\bin\\"
+        self.rvio_support_path = "C:\\pipeline\\rv\\RV-3.12.19-32\\bin\\"
         render_x_size = 960
         render_y_size = 540
         self.asset = asset
@@ -356,7 +356,9 @@ class Playblast(object):
         self.curr_date = datetime.now()
         
         self.rv_path = self.rv_support_path
+        self.rvio_path = self.rvio_support_path
         self.local_pblast_name = self.asset.code
+        self.pbpath = "C:\\Temp\\"
         self.min_frame = self.frame_start
         self.max_frame = self.frame_end
         self.local_file = self.asset.filename
@@ -382,13 +384,33 @@ class Playblast(object):
         return Movies(self)
 
     def burn_in_string(self):
+        self.opacity = 0.35
+        self.grey = 1.0
+        self.font_size = 70
+        self.client_shot_code = "..."
+        self.shot_code = "010.0010"
+        self.show_code = "RunOzzyRun"
+        self.artist = "JordanGoddard"
+        self.process = "Layout"
+        self.revision = "V0001"
+        self.status = "Complete"
+        self.rank = ""
+        self.pass_number = ""
+        self.fov = "30"
+        self.fps = 24
+        self.curr_date = "Monday January 1st, 1900"
+        self.matte_aspect = 1.785
+        self.matte_opacity = 1.0
         matte = " -overlay matte %s %s" % (self.matte_aspect, self.matte_opacity)
-        tangent_burnin = ' -overlay tangent_burnin %s %s %s %s %s %s %s %s %s %s %s %s' % (
+        tangent_burnin = ' -overlay tangent_burnin %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s' % (
+                self.opacity,
+                self.grey,
                 self.font_size,
                 self.client_shot_code,
                 self.shot_code,
                 self.show_code,
                 self.artist,
+                self.process,
                 self.revision,
                 self.status,
                 self.rank,
@@ -419,63 +441,6 @@ class Playblast(object):
             burn_in = ""
             if self.rv_support_path:
                 burn_in = self.burn_in_string()
-
-            # RVIO can fail if there's not enough memory - @todo : this needs to be
-            # tuned over time.
-            '''
-            threads = 4
-            free_memory = memory(freeMemory=True)
-            frames = self.shot.frame_out - self.shot.frame_in
-            if free_memory < 2000 and frames > 50:
-                threads = 1
-            elif free_memory < 3000 and frames > 50:
-                threads = 2
-            log.info("Utilizing %s cores to playblast and encode" % threads)
-            '''
-            
-            '''
-            if not self.shot.audio.exists():
-                log.info("Playblasting to snapshot without audio")
-                encode_sp = subprocess.Popen(
-                                ('"%s/rvio" %s.%s-%s@@@@.iff -o %s \
-                                    %s \
-                                    -codec avc1 -quality .75 \
-                                    -outgamma 0.65 -v -outfps %i \
-                                    -rthreads %s' %
-                                    (   self.rv_path, 
-                                        self.local_pblast_name, 
-                                        self.min_frame, 
-                                        self.max_frame, 
-                                        self.local_file, 
-                                        burn_in,
-                                        self.shot.get_fps(),
-                                        threads)),
-                                shell=True, 
-                                stdout=subprocess.PIPE, 
-                                stderr=subprocess.STDOUT)
-            
-            else:
-                log.info("Playblasting to snapshot with audio")
-                log.info("Audio path: %s" % self.shot.audio.path)
-                encode_sp = subprocess.Popen(
-                                ('"%s/rvio" [ %s.%s-%s@@@@.iff %s ] -o %s \
-                                    %s \
-                                    -codec avc1 -quality .75 \
-                                    -outgamma 0.65 -v -outfps %i \
-                                    -rthreads %s' %
-                                    (   self.rv_path, 
-                                        self.local_pblast_name, 
-                                        self.min_frame, 
-                                        self.max_frame, 
-                                        self.shot.audio.path, 
-                                        self.local_file, 
-                                        burn_in,
-                                        self.shot.get_fps(),
-                                        threads)),
-                                shell=True, 
-                                stdout=subprocess.PIPE, 
-                                stderr=subprocess.STDOUT)
-            '''
             
             log.info("Playblasting to snapshot with audio")
             # log.info("Audio path: %s" % self.shot.audio.path)
@@ -483,23 +448,20 @@ class Playblast(object):
             self.min_frame = "0001"
             self.max_frame = "0010"
             
-            encode_sp = subprocess.Popen(
-                            ('"%s/rvio" [ %s.%s-%s@@@@.tif ] -o %s \
-                                %s \
-                                -codec avc1 -quality .75 \
-                                -outgamma 0.65 -v -outfps %i \
-                                -rthreads %s' %
-                                (   self.rv_path, 
-                                    self.local_pblast_name, 
-                                    self.min_frame, 
-                                    self.max_frame, 
-                                    self.local_file, 
-                                    burn_in,
-                                    self.fps,
-                                    threads)),
-                            shell=True, 
-                            stdout=subprocess.PIPE, 
-                            stderr=subprocess.STDOUT)
+            print("\nStarted Encode\n")
+            
+            pbpath = self.pbpath
+            new_movie_name = "%s_playblast"%(self.asset.code)
+            active_rvio_path = "%srvio.exe"%(self.rvio_path)
+            active_input_path = "%s%s.#.tif"%(pbpath, self.asset.code)
+            active_output_path = "%s%s.mov"%(pbpath, new_movie_name)
+            print("\n\n\nThe burn in is : ....%s....\n\n\n"%burn_in)
+            # subprocess.call('"%s" "%s" -o "%s" -codec avc1 -v -outres 960  720'%(active_rvio_path,active_input_path,active_output_path), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            subprocess.call('"%s" "%s" -o "%s" %s -codec avc1 -v -outres 960 720' %(active_rvio_path,active_input_path,active_output_path, burn_in), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            print("\nFinished Encode\n")
+                            
+            # encode_sp = subprocess.Popen('"%s/rv" [ %s%s.#.tif ]' %(self.rv_path, self.pbpath, self.local_pblast_name))
             
             print(self.filepath)
             #subprocess.Popen(('"%s/rvio" [ %s ] -play - fullscreen-o %s -outgamma 0.65 -v -outfps %i' %(self.rv_path, self.filepath, burn_in, self.fps)))
@@ -568,7 +530,7 @@ class Playblast(object):
         render.use_stamp_filename = False                               # Set render stamp file name to 'OFF'
         render.use_stamp_marker = False                                 # Set render stamp marker to 'OFF'
         render.use_stamp_sequencer_strip = False                        # Set render stamp sequence strip to 'OFF'
-        render.image_settings.file_format = 'TIFF'                    # Set image file format for render to 'FFMPEG'
+        render.image_settings.file_format = 'TIFF'                      # Set image file format for render to 'FFMPEG'
         render.ffmpeg.format = 'QUICKTIME'                              # Set render format to 'Quicktime'
         render.ffmpeg.codec = 'MPEG4'                                   # Set render codec to 'MPEG4'
         render.ffmpeg.audio_codec = 'PCM'                               # Set render audio codec to 'PCM'

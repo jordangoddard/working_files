@@ -344,18 +344,14 @@ class PlayblastOld:
     #  @param textured Perform playblast with textures on?
     #  @param dynamics_enabled Playblast with dynamics on?
     def execute(self, percent=100, textured=False, dynamics_enabled=False, create_version=False, comment=None, batch=False):
-
         debug = 0
-
         # First, make sure we're in GUI mode - can't playblast otherwise
         from pymel.core.general import about
         if about(batch=True):
             log.warning( "Can't perform playblast in batch mode - requires GUI to run")
             return
-
         # We're in GUI mode, continue with playblast
         log.info( "Performing playblast of shot %s" % self.shot)
-
         # Create version if we're playblasting to snapshot for approvals
         if create_version:
             log.info( "Publishing shot %s prior to playblast" % self.shot)
@@ -368,64 +364,48 @@ class PlayblastOld:
                     if not published:
                         log.warning( "Playblast of %s was cancelled" % self.shot)
                         return False
-
         # Store a list of selected objects, to restore at the end
         # Deselect all objects, so that no wireframes show
         selected = ls(selection=True)
         select(deselect=True)
-
         # Set the start and end timerange appropriately
         self.set_timerange(create_version = create_version)
-
         # Construct the window to playblast through - this stuff is in the 
         # core.gui.animation module
         from core.gui import animation as anim_gui
-        playblast_window, model_editor = anim_gui.playblast_window( self.shot.process, self.width, self.height, 
-                                                            textured=textured, dynamics_enabled=dynamics_enabled)
-
+        playblast_window, model_editor = anim_gui.playblast_window( self.shot.process, self.width, self.height, textured=textured, dynamics_enabled=dynamics_enabled)
         # Need to set then reset the image format in the render globals - for some stupid reason, Autodesk
         # uses this setting for playblasts as of 2011 - didn't for the last 15 years.
-
         default_render_globals = ls('defaultRenderGlobals')[0]
-
         prev_image_format = None
         if default_render_globals:
             log.info("Setting render globals to IFF for playblast")
             prev_image_format = default_render_globals.imageFormat.get()
             default_render_globals.imageFormat.set(7) # 7 == IFF
-
         # Do the actual playblast - have to defer the evaluation of the 
         # command, to give the window time to draw
-
         playblast_finished = playblast(format="iff", filename=self.local_pblast_name, viewer=False, 
                 showOrnaments=False, fp=4, percent=100, fo=True, quality=100)
-
         # Reset the render globals to what the user had it set to before
-
         if prev_image_format:
             log.info("Resetting render globals to user defined value: %s" % prev_image_format)
             default_render_globals.imageFormat.set(prev_image_format)
-
         if not playblast_finished:
             log.warning("User cancelled the playblast for %s - not saving to snapshot" % self.shot)
             if selected:
                 select(selected)
             return
-
         if create_version:
             # Publish the movie file to snapshot
             self.encode()
             self.publish()
-
         # Delete the playblast window now that we're done with it - 
         # use deferred to ensure that the playblast is done before 
         # deleting the window
         evalDeferred('from pymel.core import deleteUI; deleteUI("%s")' % playblast_window)
-
         # Restore selection
         if selected:
             select(selected)
-
         # Run RV on the resulting images - if we're in batch mode,
         # skip this, and if we're not creating a version in the DB,
         # then it's a local playblast - run RV on the local images
@@ -493,8 +473,7 @@ class PlayblastOld:
         try:
 
             log.info("Getting local and server paths for %s" % self.shot)
-            self.local_path = ("C:/temp/banzai_data/projects/%s/movies/%s" % 
-                                (self.shot.show.code, self.shot.sequence.code))
+            self.local_path = ("C:/temp/banzai_data/projects/%s/movies/%s" % (self.shot.show.code, self.shot.sequence.code))
             self.local_file = "%s/%s" % (self.local_path, self.movie_file)
 
             # Make sure the directories exist first - create it if not, and bail if we fail

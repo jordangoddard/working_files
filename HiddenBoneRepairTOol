@@ -1,0 +1,97 @@
+bl_info = {
+    "name": "Swap Animation Tool",
+    "author": "Jordan Goddard",
+    "version": (1, 0, 0),
+    "blender": (2, 74, 0),
+    "location": "View3D > Tool Panel > Tangent",
+    "description": "Moves animation from one object bone to another",
+    "warning": "This is a custom blender addon. USE AT OWN RISK!",
+    "wiki_url": "https://tangentanimation.sharepoint.com/wiki/Pages/Home.aspx",
+    "tracker_url": "",
+    "category": "Tangent"}
+
+import bpy
+from bpy.types import Panel, Operator
+
+
+class OBJECT_PT_mainGUI(bpy.types.Panel):
+    """Creates a Panel in the Object properties window"""
+    bl_label = "Remove Hiden Animation"
+    bl_idname = "OBJECT_PT_mainGUI"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+    bl_category = "Tangent"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        scene = context.scene
+        row.operator("object.move_to_first_frame", text = "Reset Start Frame", icon = 'CONSTRAINT')
+        row.operator("object.fix_hidden_animation", text = "Fix Broken Bones", icon = 'CONSTRAINT')
+
+
+class fix_hidden_animation(Operator):                                                                                               # first button
+    bl_label = "Fix hiden bones"
+    bl_idname = "object.fix_hidden_animation"
+    bl_description = ""
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        self.gather_objects()
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return self.execute(context)
+
+    def gather_objects(self):
+        scene = bpy.data.scenes[bpy.context.scene.name]
+        main_obj = None
+        dest_bone = "mch.eyebrow.002.R"
+        get_bone = None
+        for obj in scene.objects:
+            if "ozzy" in obj.name:
+                if "proxy" in obj.name:
+                    main_obj = obj.name
+                    print(obj.name)
+        if main_obj != None:
+            for bone in scene.objects[main_obj].pose.bones:
+                if "ctl" in bone.name:
+                    pass
+                else:
+                    obj.pose.bones[bonename].location (0.0,0.0,0.0)
+
+
+class MoveToFrameOne(Operator):                                                                                               # first button
+    bl_label = "Reset Frame"
+    bl_idname = "object.move_to_first_frame"
+    bl_description = ""
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        bpy.data.scenes[bpy.context.scene.name].frame_current = 1
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return self.execute(context)
+
+
+def register():
+    bpy.utils.register_module(__name__)
+    bpy.types.Scene.PusherObject = bpy.props.StringProperty()
+    bpy.types.Scene.PullerObject = bpy.props.StringProperty()
+    bpy.types.Scene.PusherBone = bpy.props.StringProperty()
+    bpy.types.Scene.PullerBone = bpy.props.StringProperty()
+
+def unregister():
+    bpy.utils.unregister_module(__name__)
+    bpy.types.Scene.PusherObject = bpy.props.StringProperty()
+    bpy.types.Scene.PullerObject = bpy.props.StringProperty()
+    bpy.types.Scene.PusherBone = bpy.props.StringProperty()
+    bpy.types.Scene.PullerBone = bpy.props.StringProperty()
+
+if __name__ == "__main__":
+    if bpy.app.background:
+        register()
+    else:
+        register()
+
