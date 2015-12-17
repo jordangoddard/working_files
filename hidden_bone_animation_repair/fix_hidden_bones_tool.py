@@ -70,14 +70,14 @@ class fix_hidden_animation(Operator):
                                 if correct_curve == True:
                                     start_frame = scene.frame_start
                                     end_frame = scene.frame_end
-                                    clearBoneAnimation(bone, "location", start_frame, end_frame)
-                                    clearBoneAnimation(bone, "scale", start_frame, end_frame)
+                                    self.clearBoneAnimation(bone, "location", start_frame, end_frame)
+                                    self.clearBoneAnimation(bone, "scale", start_frame, end_frame)
                                     if rot_typ == True:
-                                        clearBoneAnimation(bone, "rotation_quaternion", start_frame, end_frame)
+                                        self.clearBoneAnimation(bone, "rotation_quaternion", start_frame, end_frame)
                                     else:
-                                        clearBoneAnimation(bone, "rotation_euler", start_frame, end_frame)
+                                        self.clearBoneAnimation(bone, "rotation_euler", start_frame, end_frame)
 
-    def clearBoneAnimation(bone, typ, from_frame, to_frame):
+    def clearBoneAnimation(self, bone, typ, from_frame, to_frame):
         obj = bone.id_data
         action = obj.animation_data.action
         if action is None:
