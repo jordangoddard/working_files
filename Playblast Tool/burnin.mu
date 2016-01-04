@@ -1,3 +1,5 @@
+require python;
+
 use glyph;
 use gl;
 use glu;

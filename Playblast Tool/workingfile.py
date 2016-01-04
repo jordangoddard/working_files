@@ -1,5 +1,6 @@
 #from core import log, asset
 import bpy
+import pymu
 
 def run_stuff():
     print("\n\nI am running the first class\n\n")
@@ -315,7 +316,7 @@ class Asset(object):
         Run playblast class with asset information
         '''
         return Playblast(self)
-# c$
+
 
 class Playblast(object):
     def __init__(self, asset):

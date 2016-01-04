@@ -70,14 +70,27 @@ class fix_hidden_animation(Operator):
                                 if correct_curve == True:
                                     start_frame = scene.frame_start
                                     end_frame = scene.frame_end
-                                    self.clearBoneAnimation(bone, "location", start_frame, end_frame)
-                                    self.clearBoneAnimation(bone, "scale", start_frame, end_frame)
+                                    self.clear_bone_animation(bone, "location", start_frame, end_frame)
+                                    self.clear_bone_animation(bone, "scale", start_frame, end_frame)
                                     if rot_typ == True:
-                                        self.clearBoneAnimation(bone, "rotation_quaternion", start_frame, end_frame)
+                                        self.clear_bone_animation(bone, "rotation_quaternion", start_frame, end_frame)
                                     else:
-                                        self.clearBoneAnimation(bone, "rotation_euler", start_frame, end_frame)
+                                        self.clear_bone_animation(bone, "rotation_euler", start_frame, end_frame)
 
-    def clearBoneAnimation(self, bone, typ, from_frame, to_frame):
+    def clear_bone_animation(self, bone, typ, from_frame, to_frame):
+        obj = bone.id_data
+        action = obj.animation_data.action
+        if action is None:
+            return
+        name = bone.name
+        fcurves = [fc for fc in action.fcurves if fc.data_path.startswith('pose.bones["%s"].%s' % (name, typ))]
+        for fc in fcurves:
+            frames = [kfp.co[0] for kfp in fc.keyframe_points if kfp.co[0] > from_frame and kfp.co[0] < to_frame]
+            for f in frames:
+                success = bone.keyframe_delete(typ, frame=f)
+                print("delete %s %s %3.1f" % (name, typ, f), success)
+    
+    def set_bone(self, bone, typ, from_frame, to_frame):
         obj = bone.id_data
         action = obj.animation_data.action
         if action is None:
