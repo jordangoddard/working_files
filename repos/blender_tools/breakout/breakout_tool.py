@@ -34,6 +34,7 @@ import logging
 import re
 import time
 
+
 class BreakOut(object):
     """
     Main breakout class, handling the breakout process
@@ -42,6 +43,9 @@ class BreakOut(object):
         """
         This will run when this class is called and will carry any passed objects
         """
+        self.log = []
+        self.group_objects = []
+        self.gather_group_data()
         self.scene_name = None
         self.seqshot = None
         self.filepath = None
@@ -66,7 +70,8 @@ class BreakOut(object):
         try:
             file_read = open('C:\\Temp\\pass_temp.txt','r').readlines()
         except:
-            print("\n\nFailure\n\n")
+            self.log.append("run_it function has failed")
+            print("\n\nFailureRunIt\n\n")
         else:
             line_one = file_read[0]
             match = re.match(r'(\S+\.\S+)', line_one)
@@ -76,6 +81,16 @@ class BreakOut(object):
             self.file = match_again.group(1)
             self.seqshot = self.scene_name
 
+    def gather_group_data(self):
+        try:
+            file_read = open('C:\\Temp\\group_data_transfer.txt','r')
+        except:
+            self.log.append("Failure in gathering grp.stuff data from pass file")
+        else:
+            for line in file_read:
+                self.group_objects.append(line[:-1])
+            file_read.close()
+
     def open_checking_file(self):
         """
         Open the '.BLEND' file for processing and temporarily removes non-essential scenes
@@ -84,6 +99,7 @@ class BreakOut(object):
         selection_name = self.scene_name
         bpy.ops.wm.open_mainfile(filepath=current_file_path)
         self.seqshot = self.scene_name
+        
         for scene in bpy.data.scenes:
             if scene.name != selection_name:
                 bpy.data.screens['Default'].scene = bpy.data.scenes[scene.name]
@@ -93,28 +109,37 @@ class BreakOut(object):
             else:
                 print("Something went wrong!")
 
+        for obj in bpy.data.scenes[self.scene_name].objects:
+            for group in obj.users_groups:
+                if group.name == "grp.stuff":
+                    self.stuff_grp.append(obj.name)
+
     def execute(self):
         """
         This will execute the deffinitions in this class
         """
         self.clean_scene()
         self.append_original_shot_file(self.filepath, self.seqshot)
-        print("APPEND DONE")
+        #print("APPEND DONE")
         self.get_offset()
         self.transfer_asset_data(self.scene[0], self.scene[1])
-        print("TRANSFER DONE")
+        #print("TRANSFER DONE")
         self.set_new_scene_start_end()
-        print("SET NEW SCENE DONE")
+        #print("SET NEW SCENE DONE")
         self.reset_audio_offsets()
-        print("SET AUDIO DONE")
+        #print("SET AUDIO DONE")
         self.reset_animation_offsets()
-        print("SET KEYFRAMES DONE")
+        #print("SET KEYFRAMES DONE")
         self.delete_original_scene()
-        print("DELETE DONE")
+        #print("DELETE DONE")
         self.remove_new_asset_suffix()
-        self.link_LOW()
+        #self.link_LOW()
         self.playblast_manager()
-        print("RENAME DONE")
+        # self.relink_grp_stuff()
+        #print("RENAME DONE")
+        self.relink_focus()
+        #self.replace_flagged_assets()
+        self._log_()
 
     def playblast_manager(self):
         pass
@@ -123,7 +148,7 @@ class BreakOut(object):
         """
         Gather current offset data from master file
         """
-        self.offset = (self.scene[0].frame_start - 1)
+        self.offset = (bpy.data.scenes[self.scene_name].frame_start - 1)
 
     def clean_scene(self):
         """
@@ -137,8 +162,9 @@ class BreakOut(object):
 
     def append_original_shot_file(self, filepath, seq_shot):
         """
-        Append the shot at Scene.random_suffix, then use this to gather information on the
+        Append the shot at Scene.random_suffix, then use this to gather information
         """
+        scene_obj = []
         import time
         self.filepath = self.file
         print(self.filepath)
@@ -147,12 +173,45 @@ class BreakOut(object):
                  data_to.scenes = [seq_shot]
         except: 
             time.sleep(10)
+            self.log.append("Cannot append original file")
             quit("Cannot open file")
         bpy.context.screen.scene = self.scene[0]
         self.scene[1].name = self.new_name(self.scene[0].name)
         self.new_scene = self.scene[1]
         bpy.ops.file.make_paths_absolute()
+        
+        bpy.ops.group.create(name="grp.stuff")                              # Create grp.stuff Group
+        
+        current_appended_scene_name = self.scene[0].name                    # Set scene name
+        for obj in bpy.data.scenes[current_appended_scene_name].objects:    # Compair objects to group from master
+            if obj.name in self.group_objects:
+                try:
+                    bpy.context.scene.objects[bpy.context.scene.objects.active.name].select=False
+                except:
+                    pass
+                #bpy.context.scene.objects.active = obj
+                #if obj not in bpy.data.groups["grp.stuff"].objects:
+                #    print("Adding it")
+                try:
+                    bpy.data.groups["grp.stuff"].objects.link(obj)
+                except:
+                    self.log.append("Cannot add %s to grp.stuff, because it is already in grp.stuff."%obj.name)
+                    print("OOPS")
+                '''
+                for grgobj in bpy.data.groups["grp.stuff"].objects:
+                    print("%s:%s"%(grgobj.name, obj.name))
+                    if obj.name == grgobj.name:
+                        print("pass: %s"%obj.name)
+                    else:
+                        print("copy: %s"%obj.name)
+                        bpy.data.groups["grp.stuff"].objects.link(obj)
+                '''
+                #bpy.ops.object.group_link(group="grp.stuff")
+            else:
+                print("\n%s is not a match"%obj.name)
+       
         return {'FINISHED'}
+
 
     def transfer_asset_data(self, scene_from, scene_to):
         """
@@ -168,89 +227,117 @@ class BreakOut(object):
                 self.new_scene.sequence_editor.sequences.new_sound(audio.name, audio.filepath, audio.channel, audio.frame_start)
         except:
             print("ERROR: No Audio")
-        object_list = []
-        all_relationship = []
-        new_object_list = []
+        object_list = [] #-------------------------------------------------------------------Stores ObjectData
+        all_relationship = [] 
+        new_object_list = [] #---------------------------------------------------------------Stores ObjectName only 
         for obj in scene.objects:
             if self.useful_check(obj):
-                obj.name = obj.name + "X"
+                obj.name = obj.name + "X" #--------------------------------------------------This is to make sure that all the constraints will be transfered correctly
                 object_list.append(obj)
         for obj in object_list: 
             object_relationship = self.check_relationship(obj.name, object_list)
             all_relationship.append(object_relationship)
+        #print(self.parent_offset)
         object_num = 0
         for obj in object_list:
             new_object_list.append(None)
             object_num = 1 + object_num
         for obj in object_list:
             if obj.name.startswith('grp'):
-                search_proxy = re.search("proxy", obj.name)
-                if not search_proxy:
+                is_proxy = re.search("proxy", obj.name)
+                if not is_proxy:  
                     object_index = object_list.index(obj) 
                     proxy_index = None
                     try:
                         obj.dupli_group.name
                     except: 
-                        print("Error in group")
+                        pass #----------------------------------------------------------------No dupli group
+                        #print("Error in group")
                     else:
                         group_name = obj.dupli_group.name
                         group = bpy.data.groups[group_name]
                         publish_link = self._publish_path(group.library.filepath)
-                        proxy_name = "%s_proxy" %group_name
-                        proxy_name2 = "%s_proxy" %obj.name
+                        proxy_name = "%s_proxy" %group_name #grp.ozzy_proxy
                         proxy = False
-                        for obj in object_list:
-                            search = re.search(proxy_name, obj.name)
-                            search2 = re.search(proxy_name2, obj.name)
-                            if search or search2: 
-                                print("%s has proxy" %group_name)
-                                proxy_index = object_list.index(obj)
-                                proxy = True
-                                proxy_name = obj.name
-                                break
-                        new_group_name = self.link_in_groups(publish_link, obj.name)
+                        for object in object_list:
+                            search2 = re.search("proxy", object.name) #--------------------------it has the word proxy in it 
+                            if search2: 
+                                try: 
+                                    object.data.library.filepath
+                                    group.library.filepath
+                                except: 
+                                    print("LOG: not a proxy")
+                                    self.log.append("There is no proxy")
+                                else: 
+                                     #-----If it's the same proxy, should have the same filepath (Better way of checking)           
+                                    if object.data.library.filepath == group.library.filepath:
+                                        print("LOG: %s has proxy" %group_name)
+                                        proxy_index = object_list.index(object)
+                                        proxy = True
+                                        proxy_name = object.name
+                                        break
+                        new_group_name = self.link_in_groups(publish_link, group_name)
+                        print("LOG: %s %s" %(group_name, publish_link))
                         new_group_name = self.create_empty(new_group_name, publish_link, self.new_scene.name)
                         new_object_list[object_index] = new_group_name
                         if proxy: 
-                            print("Create Proxy")
-                            print(new_group_name)
+                            print("LOG: Create Proxy for %s" %new_group_name)
                             new_proxy_name = self.create_armature_proxies(new_group_name)
                             new_object_list[proxy_index] = new_proxy_name
-                            self.copy_animation_data(proxy_name, new_proxy_name)
+                            self.copy_animation_data(proxy_name, copy_to_name = new_proxy_name)
             else:
                 object_index = object_list.index(obj)
                 new_object_list[object_index] = self.new_name(obj.name)
-                self.copy_item(obj.name)
-                self.copy_animation_data(obj.name)
-        self.transfer_constraints(object_list, new_object_list, all_relationship, object_num)
-        self.relink_dof()
+                if all_relationship[object_index][0]:
+                    self.copy_item(obj.name, True)
+                else:
+                    self.copy_item(obj.name)
+        self.transfer_constraints(object_list, new_object_list, all_relationship, len(object_list))
+        self.relink_dof(object_list, new_object_list)
+        self.attach_bone_constraints(object_list, new_object_list)
         return {'FINISHED'}
 
-    def relink_dof(self):
+    def relink_dof(self, object_list, new_object_list):
         """
         Resets camera focus constraints
         """
+        for obj in self.scene[0].objects: 
+            if obj.name.startswith('cam'):
+                focus = obj.data.dof_object
+                new_cam = self.scene[1].objects[new_object_list[object_list.index(obj)]]
+                new_cam.data.dof_object = focus
+
+    def relink_focus(self):
+        """
+        Resets camera focus constraints
+        """
+        camera = None
         focus = None
-        for obj in self.new_scene.objects: 
+        for obj in bpy.data.scenes[self.scene_name].objects: 
+            if obj.name.startswith('cam'):
+                camera = obj.data.name
             if obj.name.startswith('fcs'):
-                focus = obj
-        for camera in bpy.data.cameras:
-            camera.dof_object = focus
+                if not obj.name.endswith('X'):
+                    focus = obj.name
+        bpy.data.cameras[camera].dof_object = bpy.data.scenes[self.scene_name].objects[focus]
 
     def useful_check(self, obj):
         """
         Check if item needs to be passed to the new scene
         """
         try:
-            if obj.users_group.name.startswith("grp.stuff"):
-                return True
+            for group in obj.users_group:
+                if group.name.startswith("grp.stuff"):
+                    return True
         except: 
-            print("no users group")
+            pass #-----------------------------------------------------------------------------------No users group
+            #print("no users group")
         if obj.name.startswith('lkt') or obj.name.startswith('cam') or obj.name.startswith('fcs'):
             return True
         elif obj.name.startswith('grp'):
             return True
         else:
+            print("LOG: %s is not useful", obj.name)
             return False
 
     def check_relationship(self, obj_name, obj_list):
@@ -258,36 +345,60 @@ class BreakOut(object):
         Generate a list of all relationships that existed in the scene
         """
         parent_data=[None, None]
-        constraint_data=[None, None, None]
         all_constraints = []
         child = self.scene[0].objects[obj_name]
         try:
+            child.parent.name
+        except AttributeError:
+            pass #--------------------------------------------------------------------------------No Parent
+        else:
             for obj in obj_list: 
                 if child.parent.name == obj.name:
-                    parent[0] = obj_list.index(obj)
-                    parent[1] = (obj.parent_type)
-        except AttributeError:
-            print("no parent")
+                    list = []
+                    parent_data[0] = obj_list.index(obj) #-----------------------------------------Append Index of the parent object 
+                    parent_data[1] = obj.parent_type#----------------------------------------------Parent Type
+                    
+                    #Create a null object to track the global location of the child
+                    break
         try:
-            for constraint in obj.constraints:
-                constraint_data[0] = constraint.type
-                for obj in obj_list:
-                    if constraint.target.name.startswith('rig'):
-                        import re 
-                        match = re.match(r'rig\.(\w+)', constraint.target.name)
-                        search = re.search(match.group(1), obj.name)
-                        if search:
-                            constraint_data[1] = obj_list.index(obj)
-                            constraint_data[2] = constraint.subtarget
+            child.constraints[0]
+        except IndexError:
+            pass #--------------------------------------------------------------------------------No Constraint
+            #print("no constraint")
+        else:
+            for constraint in child.constraints:
+                constraint_data = [None, None]
+                try:
+                    constraint.target.name
+                except AttributeError:
+                    constraint_data[0] = None
+                    constraint_data[1] = None
+                else:
+                    if constraint.target.name.startswith('rig'): 
+                        for obj in obj_list:
+                            import re 
+                            match = re.match(r'rig\.(\w+)', constraint.target.name)
+                            search = re.search(match.group(1), obj.name)
+                            search2 = re.search('proxy', obj.name)
+                            if search and search2:
+                                constraint_data[0] = obj_list.index(obj)
+                                constraint_data[1] = constraint.subtarget
                     else:
-                        constraint_data[1] = obj_list.index(obj)
-                        constraint_data[2] = constraint.subtarget
+                        try:
+                            constraint_data[0] = obj_list.index(constraint.target)
+                        except: 
+                            print("CHECK: Target object: %s is not in grp.stuff. Constraint will not be copied" %constraint.target)
+                            constraint_data[0] = None
+                        else:
+                            try:
+                                constraint_data[1] = constraint.subtarget
+                            except: 
+                                pass #-------------------------------------------------------------No SubTarget
+                                #print("no subtarget")
                 all_constraints.append(constraint_data)
-        except AttributeError: 
-            print("no constraint")
         if not all_constraints:
             all_constraints.append(None)
-        all_relationship = parent_data + all_constraints
+        all_relationship = parent_data + all_constraints #[parent type, parent object, constraints]
         print(all_relationship)
         return all_relationship
 
@@ -295,15 +406,23 @@ class BreakOut(object):
         """
         Transfer constraints (and parenting) from old scenes to new scenes (Relies heavily on an address/index based procedural code)
         """
-        print(new_object_list)
+        #print(new_object_list)
         i = 0
+        #print(index)
         while (i < index):
             if new_object_list[i]:
                 obj = self.new_scene.objects[new_object_list[i]]
+                print(obj.name)
                 if all_relationship[i][0]:
                     new_index = all_relationship[i][0]
-                    obj.parent = self.new_scene.objects[new_object_list[new_index]]
-                    obj.parent_type = all_relationship[i][1]
+                    for ob in self.new_scene.objects: 
+                        ob.select = False
+                    obj.select = True
+                    bpy.context.screen.scene = self.new_scene
+                    self.new_scene.objects.active = self.new_scene.objects[new_object_list[new_index]]
+                    bpy.ops.object.parent_set(type = all_relationship[i][1], keep_transform = True) #--------------Set Parent, Keep Transformation
+                    #obj.parent = self.new_scene.objects[new_object_list[new_index]]
+                    #obj.parent_type = all_relationship[i][1]
                 constraint_num = 2
                 for copy_from_constraint in object_list[i].constraints:
                     constraint_type = copy_from_constraint.type
@@ -311,61 +430,208 @@ class BreakOut(object):
                     new_object = self.new_scene.objects[new_object_list[i]]
                     copy_to_constraints = new_object.constraints.new(constraint_type)
                     for prop in properties: 
-                        print(prop)
+                        #print(prop)
                         setattr(copy_to_constraints, prop, getattr(copy_from_constraint, prop))
+                    print(constraint_num)
                     if all_relationship[i][constraint_num]:
-                        copy_to_constraints.type = all_relationship[i][constraint_num][0]
-                        new_index = all_relationship[i][constraint_num][1]
-                        import re
-                        new_object_name = new_object_list[new_index]
-                        search = re.search('proxy', new_object_name)
-                        if search:
-                            copy_to_constraints.target = self.new_scene.objects[new_object_name].proxy
-                            copy_to_constraints.subtarget = all_relationship[i][constraint_num][2]
+                        #copy_to_constraints.type = all_relationship[i][constraint_num][0] #String
+                        new_index = all_relationship[i][constraint_num][0] #Int
+                        if new_index is None: 
+                            copy_to_constraints.target = None
                         else:
-                            copy_to_constraints.target = self.new_scene.objects[new_object_name]
-                            try:
-                                copy_to_constraints.subtarget = all_relationship[i][constraint_num][2]
-                            except:
-                                print("No subtarget")
+                            import re
+                            new_object_name = new_object_list[new_index] #Corresponding New Object
+                            search = re.search('proxy', new_object_name)
+                            if search:
+                                copy_to_constraints.target = self.new_scene.objects[new_object_name] #---------Connect to the proxy
+                                try:
+                                    copy_to_constraints.subtarget = all_relationship[i][constraint_num][1] #---------Add bone subtarget
+                                except: 
+                                    print("ERROR: no bone as subtarget")
+                            else:
+                                copy_to_constraints.target = self.new_scene.objects[new_object_name] #---------------Connect to the object
+                                try:
+                                    copy_to_constraints.subtarget = all_relationship[i][constraint_num][1] #---------If subtarget exist, copy subtarget
+                                except:
+                                    pass #---------------------------------------------------------------------------No subtarget
+                                    print("LOG: %s has no subtarget" %new_object_name)
                     constraint_num = constraint_num + 1
             i = i + 1
 
+    def attach_bone_constraints(self, obj_list, new_object_list):
+        """
+        Reattach all the bone constriants in the new scene
+        """
+        for obj in obj_list: 
+            import re
+            is_proxy = re.search('proxy', obj.name)
+            if is_proxy and obj.type != 'EMPTY':
+                for bone in obj.pose.bones: 
+                    if bone.name.startswith('ctl.') and bone.constraints: #----------------------------------------------------------------------------------------Bone has constraint
+                        for con in bone.constraints:
+                            if new_object_list[obj_list.index(obj)]: #---------------------------------------------------------------------------------------------Make sure the object is not None
+                                new_proxy = self.scene[1].objects[new_object_list[obj_list.index(obj)]]
+                                try:
+                                    con.target
+                                except: 
+                                    try:
+                                        other_bone = new_proxy.pose.bones[bone.name]
+                                    except: 
+                                        print("ERROR: OBJ: %s Bone: %s has different name in the new object" %(obj.name, bone.name))
+                                    else:
+                                        properties = [prop.identifier for prop in con.bl_rna.properties if not prop.is_readonly]
+                                        new_constraint = other_bone.constraints.new(type = con.type)
+                                        for prop in properties: 
+                                            setattr(new_constraint, prop, getattr(con, prop))
+                                        try:
+                                            if con.target:
+                                                new_constraint.target = self.scene[1].objects[new_object_list[obj_list.index(con.target)]]
+                                        except:
+                                            print("LOG: OBJ: %s Bone: %s Constraint: %s has no target" %(obj.name, bone.name, con.name))
+                                else:
+                                    if con.target != obj and con.target in obj_list:
+                                        try:
+                                            other_bone = new_proxy.pose.bones[bone.name]
+                                        except: 
+                                            print("ERROR: OBJ: %s Bone: %s has different name in the new object" %(obj.name, bone.name))
+                                        else:
+                                            properties = [prop.identifier for prop in con.bl_rna.properties if not prop.is_readonly]
+                                            new_constraint = other_bone.constraints.new(type = con.type)
+                                            for prop in properties: 
+                                                setattr(new_constraint, prop, getattr(con, prop))
+                                            try:
+                                                if con.target:
+                                                    new_constraint.target = self.scene[1].objects[new_object_list[obj_list.index(con.target)]]
+                                            except:
+                                                print("LOG: OBJ: %s Bone: %s Constraint: %s has no target" %(obj.name, bone.name, con.name))
+                            else: 
+                                print("ERROR: OBJ: %s does not have corresponding new_object" %obj.name ) #------------------------------------------------------------------------This should not happen
+                                                                                                
     def create_armature_proxies(self, new_group_name):
         """
         This will take the file path for the proxies, that was gathered from the original appended file, and create a new proxy on each object
         """
         import re
-        selection_pattern = bpy.ops.object.select_pattern
-        scene = self.new_scene
-        proxy_name = None
-        rig_name = None
-        obj = scene.objects[new_group_name]
-        self.new_scene.objects.active = self.new_scene.objects[new_group_name]
-        match = re.match(r'grp\.(\S+)', new_group_name)
+        proxy_name = None #-----------------------------------------------------------------name of the proxy
+        rig_name = None #-------------------------------------------------------------------name of the rig
+        dupli_name = None #-----------------------------------------------------------------name of the actual group
+        obj = self.new_scene.objects[new_group_name]
+        self.new_scene.objects.active = obj
+        try:
+            dupli_name = obj.dupli_group.name
+        except: 
+            pass
+        match = re.match(r'grp\.(\S+)', dupli_name)
         if match: 
             rig_name = "rig.%s" %match.group(1)
         try:
             bpy.ops.object.proxy_make(object = rig_name)
         except:
             bpy.ops.object.proxy_make()
-            print("%s's proxy might be incorrect", obj.name)
+            print("CHECK: %s's proxy might be incorrect", obj.name)
         proxy_name = "%s_proxy" %obj.name
         return proxy_name
 
-    def copy_item(self, object_name, copy_to_name = None):
+    def copy_item(self, object_name, offset = False, copy_to_name = None):
         """
         Copy object data to new version of object in new scene
         """
         if copy_to_name is None:
             copy_to_name = self.new_name(object_name)
-        copy = self.scene[0].objects[object_name].copy()
-        obj = bpy.data.objects.new(self.new_name(object_name), copy.data)
-        bpy.context.screen.scene = self.new_scene 
-        scene = bpy.context.scene
-        scene.objects.link(obj) 
-
-    def copy_animation_data(self, object_name, copy_to_name = None):
+        obj = self.scene[0].objects[object_name].copy()
+        #copy.name = self.new_name(object_name)
+        #obj = bpy.data.objects.new(self.new_name(object_name), copy.data)
+        
+        obj.name = copy_to_name
+        obj.constraints.clear()
+        obj.parent = None
+        # obj.location = copy.location
+        # obj.rotation_euler = copy.rotation_euler
+        # obj.scale = copy.scale
+        
+        offset_location = ((0,0,0))
+        offset_rotation = ((0,0,0))
+        offset_scale = ((0,0,0))
+        
+        if offset:
+            child = self.scene[0].objects[object_name]
+            slave_temp = bpy.data.objects.new("slave_temp", None) 
+            slave_temp.empty_draw_type = 'PLAIN_AXES'
+            slave_temp.location = (0,0,0)
+            slave_temp.parent = child.parent
+            new_constraint = slave_temp.constraints.new(type ='COPY_LOCATION')
+            new_constraint.target = child
+            new_constraint = slave_temp.constraints.new(type ='COPY_ROTATION')
+            new_constraint.target = child
+            new_constraint = slave_temp.constraints.new(type ='COPY_SCALE')
+            new_constraint.target = child
+            self.scene[0].objects.link(slave_temp)
+            self.scene[0].update         
+            bpy.context.screen.scene = self.scene[0]
+            for ob in self.scene[0].objects: 
+                ob.select = False
+            slave_temp.select = True
+            self.scene[0].objects.active = slave_temp
+            bpy.ops.object.parent_clear(type = 'CLEAR_KEEP_TRANSFORM')
+            obj.location = slave_temp.location
+            obj.rotation_euler = slave_temp.rotation_euler  
+            obj.scale = slave_temp.scale
+            offset_location = slave_temp.location - copy.location
+            offset_rotation = ((slave_temp.rotation_euler[0]-copy.rotation_euler[0]),(slave_temp.rotation_euler[1]-copy.rotation_euler[1]),(slave_temp.rotation_euler[2]-copy.rotation_euler[2]))
+            offset_scale = slave_temp.scale - copy.scale
+            # print(offset_location)
+            # print(offset_rotation)        
+            self.scene[0].objects.unlink(slave_temp)
+            bpy.data.objects.remove(slave_temp)
+            
+        # print(obj.name)
+        # print(obj.location)
+        # print(obj.rotation_euler)
+        self.new_scene.objects.link(obj)    
+        if self.copy_animation_data(object_name, self.copy_action_data(object_name)): #-------------------------------------------Object has animation data
+            self.offset_animation(obj, offset_location, offset_rotation, offset_scale)
+           
+    def offset_animation(self, obj, offset_location, offset_rotation, offset_scale):
+        for fcurve in obj.animation_data.action.fcurves:
+            i = 0 
+            while(i < 3):
+                if fcurve.data_path == 'location' and fcurve.array_index == i:
+                    for key in fcurve.keyframe_points: 
+                        key.co[1] = key.co[1] + offset_location[i]
+                        key.handle_left[1] =  key.handle_left[1] + offset_location[i]
+                        key.handle_right[1] =  key.handle_right[1] + offset_location[i]
+                i = i + 1
+            i = 0 
+            while(i < 3):
+                if fcurve.data_path == 'rotation_euler' and fcurve.array_index == i:
+                    for key in fcurve.keyframe_points: 
+                        key.co[1] = key.co[1] + offset_rotation[i]
+                        key.handle_left[1] =  key.handle_left[1] + offset_rotation[i]
+                        key.handle_right[1] =  key.handle_right[1] + offset_rotation[i]
+                i = i + 1
+            i = 0 
+            while(i < 3):
+                if fcurve.data_path == 'scale' and fcurve.array_index == i:
+                    for key in fcurve.keyframe_points: 
+                        key.co[1] = key.co[1] + offset_scale[i]
+                        key.handle_left[1] =  key.handle_left[1] + offset_scale[i]
+                        key.handle_right[1] =  key.handle_right[1] + offset_scale[i]
+                i = i + 1
+    
+    def copy_action_data(self, object_name, copy_to_name = None):
+        if copy_to_name is None:
+            copy_to_name = self.new_name(object_name)
+        try:
+            copy_from_action = self.scene[0].objects[object_name].animation_data.action
+        except AttributeError: 
+            print("LOG: %s has no action" %object_name)
+            return None
+        else:
+            copy_to_action = copy_from_action.copy()
+            copy_to_action.name = copy_to_name
+            return copy_to_action 
+            
+    def copy_animation_data(self, object_name, new_action = None, copy_to_name = None):
         """"
         Copy animation_data of the selected objects
         """
@@ -378,10 +644,13 @@ class BreakOut(object):
             new_object.animation_data_create()
             copy_to_animation = new_object.animation_data
             for prop in properties: 
-                print(prop)
                 setattr(copy_to_animation, prop, getattr(copy_from_animation, prop))
-        except:
-            print("No animation data")
+            if new_action:
+                copy_to_animation.action = new_action
+            return True
+        except AttributeError:
+            print("LOG: %s no animation data" %object_name)
+            return False
 
     def _publish_path(self, path):
         """"
@@ -406,14 +675,31 @@ class BreakOut(object):
         """
         self.center_cursor()
         group_name = None
+        found = False 
+        most_similar = None
+        min = 0.3
+        
         with bpy.data.libraries.load(path, link = True) as (data_from, data_to):
             for group in data_from.groups:
                 if group.startswith('grp.') and not group.endswith('LOW') and not group.endswith('MID'): #and similarity > 0.7:
-                    group_name = group
-                    break
-            data_to.groups = [group_name]
-        if not group_name:
-            print("ERROR: %s in the published version is too different from the current version" %obj_name)
+                    try:
+                        if group == obj_name:
+                            group_name = group
+                            found = True
+                            break
+                    except:
+                        ratio = self.compare_string(group, obj_name)
+                        if ratio >= min:
+                            min = ratio
+                            most_similar = group
+            if found: 
+                data_to.groups = [group_name]
+            else: 
+                print("Could be potentially wrong")
+                print(obj_name)
+                data_to.groups = [most_similar]
+                group_name = most_similar
+     
         return group_name
 
     def compare_string(self, item1, item2):
@@ -457,6 +743,19 @@ class BreakOut(object):
         Moves audio tracks back relative to their original positions
         'Name' has to be changed last since that effectively renames the object
         """
+        
+        scene = bpy.data.scenes[0]
+        startframe = (scene.frame_start)
+        changer = 1
+        offset_num = startframe - changer
+        if scene.sequence_editor:
+            for sequence in scene.sequence_editor.sequences_all:
+                print("%s --> Name: %s ,  First Frame: %s ,  Offset: %s"%(scene.name, sequence.name, sequence.frame_start, offset_num))
+                current_start = sequence.frame_start
+                self.move_audio(scene, sequence, offset_num, current_start)
+        else: 
+            print("NO AUDIO")
+        '''
         self.shot_original_scene = self.scene[0]
         self.shot_new_scene = self.scene[1]
         shot_original_frame_start=self.shot_original_scene.frame_start
@@ -467,6 +766,12 @@ class BreakOut(object):
             shot_audio_file_new_start_frame = shot_audio_file_current_start_frame - self.offset
             obj.frame_start = shot_audio_file_new_start_frame
             obj.name = shot_audio_file_name
+        '''
+
+    def move_audio(self, scene, sequence, offset_num, current_start):
+        new_val = current_start - offset_num
+        print("The audio start frame will be moved to frame %s."%new_val)
+        sequence.frame_start = new_val
 
     def reset_animation_offsets(self):
         """
@@ -626,3 +931,221 @@ class BreakOut(object):
             if current_object.name.startswith("cam") or current_object.name.startswith("fcs") or current_object.name.startswith("lkt"):
                 current_object.hide = True
                 current_object.hide_select = True
+    
+    def relink_grp_stuff(self):
+        bpy.ops.group.create(name="grp.stuff")                              # Create grp.stuff Group
+        current_appended_scene_name = self.scene_name                       # Set scene name
+        for obj in bpy.data.scenes[current_appended_scene_name].objects:    # Compair objects to group from master
+            if obj.name == (tuple(self.group_objects)):
+                bpy.context.scene.objects[bpy.context.scene.objects.active.name].select=False
+                bpy.context.scene.objects.active = bpy.data.scenes[current_appended_scene_name].objects[obj.name]
+                bpy.ops.object.group_link(group="grp.stuff")
+
+    def _log_(self): #jordan
+        """
+        Write temporary log file
+        """
+        import time
+        from datetime import datetime
+        date_stamp = time.strftime("%Y-%m-%d")
+        try:
+            fileread = open("C:\\Temp\\main.log", "r")
+            fileread.close()
+        except:
+            file = open("C:\\Temp\\main.log", "w")
+            file.write("%s------------------%s------------------\n\n\n"%(date_stamp, self.scene_name))
+            for log in self.log:
+                file.write("%s --> %s: %s\n" %(datetime.now(), self.scene_name, log))
+            file.close()
+        else:
+            file = open("C:\\Temp\\main.log", "a")
+            file.write("\n\n\n%s------------------%s------------------\n\n\n"%(date_stamp, self.scene_name))
+            for log in self.log:
+                file.write("%s --> %s: %s\n" %(datetime.now(), self.scene_name, log))
+            file.close()
+                
+    def replace_flagged_assets(self):
+        scene = bpy.data.scenes[self.scene_name]
+        ozzya_path = "T:\\Projects\\0043_Ozzy\\Assets\\character\\chr101_ozzy_a\\publish\\chr101_ozzy_a.blend\\Group\\"
+        ozzya_name = "grp.ozzy"
+        chestera_path = "T:\\Projects\\0043_Ozzy\\Assets\\character\\chr201_chester_a\\publish\\chr201_chester_a.blend\\Group\\"
+        chestera_name = "grp.chester"
+        gruntb_path = "T:\\Projects\\0043_Ozzy\\Assets\\character\\chr182_grunt_b\\publish\\chr182_grunt_b.blend\\Group\\"
+        gruntb_name = "grp.grunt"
+        # Variables that will be used
+        temp_pose_data_ozzy = None
+        wm = bpy.ops.wm
+        old_name = None
+        ozzy_god_node = None
+        ozzy_temp_obj_location = None
+        ozzy_temp_obj_rotation = None
+        ozzy_temp_obj_scale = None
+        chester_god_node = None
+        chester_temp_obj_location = None
+        chester_temp_obj_rotation = None
+        chester_temp_obj_scale = None
+        grunt_god_node = None
+        grunt_temp_obj_location = None
+        grunt_temp_obj_rotation = None
+        grunt_temp_obj_scale = None
+        print("\n\n\n\nStarting Script\n\n\n\n")
+        # Gather data
+        print("    Gathering old proxy data")
+        for obj in scene.objects: # Gather Old Proxy Data
+            old_name = obj.name
+            if "grp" in obj.name:
+                if "proxy" in obj.name:
+                    if "ozzy" in obj.name:
+                        # god node data
+                        for bone in obj.pose.bones:
+                            if "god" in bone.name:
+                                print("        Gathering bone data for ozzy god node")
+                                ozzy_god_node = bone
+                        print("        Gathering pose data for %s"%obj.name)
+                        old_name = obj.name
+                        obj.name = "%s_old"%old_name
+                    if "chester" in obj.name:
+                        # god node data
+                        for bone in obj.pose.bones:
+                            if "god" in bone.name:
+                                print("        Gathering bone data for chester god node")
+                                chester_god_node = bone
+                        print("        Gathering pose data for %s"%obj.name)
+                        old_name = obj.name
+                        obj.name = "%s_old"%old_name
+                    if "grunt" in obj.name:
+                        # god node data
+                        for bone in obj.pose.bones:
+                            if "god" in bone.name:
+                                print("        Gathering bone data for grunt god node")
+                                grunt_god_node = bone
+                        print("        Gathering pose data for %s"%obj.name)
+                        old_name = obj.name
+                        obj.name = "%s_old"%old_name
+        print("    End")
+        print("\n    Gathering old location data and creating new asset")
+        for obj in scene.objects: # Create new Asset
+            old_name = obj.name
+            if "proxy" not in obj.name:
+                    try:
+                        path_name = obj.dupli_group.library.filepath
+                    except:
+                        pass
+                    else:
+                        if "proxy" not in path_name:
+                            if "chr100" in path_name:
+                                print("        Gathering location data for %s"%obj.name)
+                                ozzy_temp_obj_location = obj.location
+                                ozzy_temp_obj_rotation = obj.rotation_euler
+                                ozzy_temp_obj_scale = obj.scale
+                                obj.name = "%s_old"%old_name
+                                print("        Creating new version of ozzy_a to replace %s"%obj.name)
+                                wm.link(directory=ozzya_path, filename=ozzya_name)
+                                print("        Creating rig for new ozzy_a")
+                                bpy.ops.object.proxy_make(object='rig.ozzy')
+                                old_name = obj.name
+                                obj.name = "%s_old"%old_name
+                            if "chr200" in path_name:
+                                print("        Gathering location data for %s"%obj.name)
+                                chester_temp_obj_location = obj.location
+                                chester_temp_obj_rotation = obj.rotation_euler
+                                chester_temp_obj_scale = obj.scale
+                                obj.name = "%s_old"%old_name
+                                print("        Creating new version of chester_a to replace %s"%obj.name)
+                                wm.link(directory=chestera_path, filename=chestera_name)
+                                print("        Creating rig for new chester_a")
+                                bpy.ops.object.proxy_make(object='rig.chester')
+                                old_name = obj.name
+                                obj.name = "%s_old"%old_name
+                            if "chr181" in path_name:
+                                print("        Gathering location data for %s"%obj.name)
+                                grunt_temp_obj_location = obj.location
+                                grunt_temp_obj_rotation = obj.rotation_euler
+                                grunt_temp_obj_scale = obj.scale
+                                obj.name = "%s_old"%old_name
+                                print("        Creating new version of grunt_b to replace %s"%obj.name)
+                                wm.link(directory=gruntb_path, filename=gruntb_name)
+                                print("        Creating rig for new grunt_b")
+                                bpy.ops.object.proxy_make(object='rig.grunt')
+                                old_name = obj.name
+                                obj.name = "%s_old"%old_name
+        print("    End")
+        print("\n    Pushing old proxy data to new proxy")
+        # Push data
+        for obj in scene.objects: # Push New Proxy Data
+            if "grp" in obj.name:
+                if "old" not in obj.name:
+                    if "proxy" in obj.name:
+                        if "ozzy" in obj.name:
+                            try:
+                                for bone in obj.pose.bones:
+                                    if "god" in bone.name:
+                                        print("        Gathering bone data for ozzy god node")
+                                        bone = ozzy_god_node
+                            except:
+                                print("        Unable to apply old proxy data to %s"%obj.name)
+                            else:
+                                print("        Applied old ozzy proxy data to %s"%obj.name)
+                        if "chester" in obj.name:
+                            try:
+                                for bone in obj.pose.bones:
+                                    if "god" in bone.name:
+                                        print("        Gathering bone data for chester god node")
+                                        bone = chester_god_node
+                            except:
+                                print("        Unable to apply old proxy data to %s"%obj.name)
+                            else:
+                                print("        Applied old chester proxy data to %s"%obj.name)
+                        if "grunt" in obj.name:
+                            try:
+                                for bone in obj.pose.bones:
+                                    if "god" in bone.name:
+                                        print("        Gathering bone data for grunt god node")
+                                        bone = grunt_god_node
+                            except:
+                                print("        Unable to apply old proxy data to %s"%obj.name)
+                            else:
+                                print("        Applied old grunt proxy data to %s"%obj.name)
+        print("    End")
+        print("\n    Pushing old location data to new asset")
+        for obj in scene.objects: # Push New Location Data
+            if "grp" in obj.name:
+                if "old" not in obj.name:
+                    if "proxy" not in obj.name:
+                        if "ozzy" in obj.name:
+                            try:
+                                obj.location = ozzy_temp_obj_location
+                                obj.rotation_euler = ozzy_temp_obj_rotation
+                                obj.scale = ozzy_temp_obj_scale
+                            except:
+                                print("        Unable to apply old location data to %s"%obj.name)
+                            else:
+                                print("        Applying old ozzy location data to %s"%obj.name)
+                        if "chester" in obj.name:
+                            try:
+                                obj.location = chester_temp_obj_location
+                                obj.rotation_euler = chester_temp_obj_rotation
+                                obj.scale = chester_temp_obj_scale
+                            except:
+                                print("        Unable to apply old location data to %s"%obj.name)
+                            else:
+                                print("        Applying old chester location data to %s"%obj.name)
+                        if "grunt" in obj.name:
+                            try:
+                                obj.location = grunt_temp_obj_location
+                                obj.rotation_euler = grunt_temp_obj_rotation
+                                obj.scale = grunt_temp_obj_scale
+                            except:
+                                print("        Unable to apply old location data to %s"%obj.name)
+                            else:
+                                print("        Applying old grunt location data to %s"%obj.name)
+        print("    End")
+        print("\n    Start old character clean-up")
+        #clean out old characters
+        for obj in scene.objects:
+            if "_old" in obj.name:
+                scene.objects.unlink(obj)
+        print("    End")
+        print("\n\n\n\nEnding Script\n\n\n\n")
+        scene.use_audio_scrub = True
+        scene.use_audio_sync = True

@@ -1,105 +1,61 @@
-# Generic nodes - split this up if it become too unwieldy at some point
+from .base.nodes import Action as Action_base
 
-class Group(object):
-    def __init__(self, pk, url, name, asset):
-        self.pk = pk
-        self.url = url
-        self.name = name
-        self.asset = asset
+class Action(Action_base):
 
-        self._asset = None
-        self._asset_urls = None
-        self.asset = asset
-
-        from core.connections import Connector
-        self.snapshot = Connector()
-
+    #PUT YOUR CODE HERE
     def __str__(self):
         return "%s" % self.name
-
-    @property
-    def asset(self):
-        if not self._asset:
-            self._asset = self.snapshot.asset(asset_url=self._asset_url)
-        return self._asset
-
-    @asset.setter
-    def asset(self, value):
-        from core.assets import Asset
-        if value.__class__ == Asset:
-            self._asset_url = value.url
-            self._asset = value
-        else:
-            self._asset_url = value
-            self._asset = None # Reset this, since the value for the asset_url has changed
+    pass
 
 
-class Material(object):
-    def __init__(self, pk, url, name):
-        self.pk = pk
-        self.url = url
-        self.name = name
+from .base.nodes import Camera as Camera_base
 
-    def __str__(self):
-        return "%s" % self.name
+class Camera(Camera_base):
 
-
-class Action(object):
-    def __init__(self, pk, url, name):
-        self.pk = pk
-        self.url = url
-        self.name = name
-
-    def __str__(self):
-        return "%s" % self.name
-
-
-class Camera(object):
-    def __init__(
-            self,
-            pk,
-            url,
-            name,
-            clip_start,
-            clip_end,
-            camera_type,
-            focal_length,
-            sensor_width,
-    ):
-        self.pk = pk
-        self.url = url
-        self.name = name
-        self.clip_start = clip_start
-        self.clip_end = clip_end
-        self.camera_type = camera_type
-        self.focal_length = focal_length
-        self.sensor_width = sensor_width
-
+    #PUT YOUR CODE HERE
     def __str__(self):
         return "%s > %smm" % (self.name, self.focal_length)
+    pass
 
 
-class World(object):
-    def __init__(self, pk, url, name):
-        self.pk = pk
-        self.url = url
-        self.name = name
+from .base.nodes import Group as Group_base
 
+class Group(Group_base):
+
+    #PUT YOUR CODE HERE
     def __str__(self):
         return "%s" % self.name
 
+    pass
 
-class Scene(object):
-    def __init__(self, pk, url, name, camera, world, frame_start, frame_end, frame_current):
-        self.pk = pk
-        self.url = url
-        self.name = name
-        self.camera = camera
-        self.world = world
-        self.frame_start = frame_start
-        self.frame_end = frame_end
-        self.frame_current = frame_current
 
+from .base.nodes import Material as Material_base
+
+class Material(Material_base):
+
+    #PUT YOUR CODE HERE
     def __str__(self):
         return "%s" % self.name
+    pass
+
+
+from .base.nodes import Scene as Scene_base
+
+class Scene(Scene_base):
+
+    #PUT YOUR CODE HERE
+    def __str__(self):
+        return "%s" % self.name
+    pass
+
+
+from .base.nodes import World as World_base
+
+class World(World_base):
+
+    #PUT YOUR CODE HERE
+    def __str__(self):
+        return "%s" % self.name
+    pass
+
 

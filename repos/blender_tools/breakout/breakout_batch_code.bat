@@ -15,5 +15,6 @@ Set PYTHONHOME=C:\pipeline\python\34_64\
 Set BLENDER_SYSTEM_PYTHON=C:\pipeline\python\34_64\
 Set BLENDER_USER_SCRIPTS=C:\pipeline\addons\scripts\
 
+C:\pipeline\blender\tangent-builds\blender-2.75a-windows64\blender.exe --background --python c:\pipeline\non_client\breakout\breakout_data_script.py
 C:\pipeline\blender\tangent-builds\blender-2.75a-windows64\blender.exe --background --python c:\pipeline\non_client\breakout\breakout_run_script.py
 C:\pipeline\blender\tangent-builds\blender-2.75a-windows64\blender.exe --background --python c:\pipeline\non_client\breakout\save_script.py

@@ -16,7 +16,7 @@ def put_dummy():
                 if modifier.type == 'SUBSURF' or modifier.type == 'MULTIRES':
                     mesh_list.append(obj)
                 if modifier.type == 'SIMPLE_DEFORM' and modifier.name == 'SimpleDeform_Dummy':
-                    obj.modifiers_remove(modifier)
+                    obj.modifiers.remove(modifier)
      
     for obj in mesh_list: 
         index = len(obj.modifiers) - 1
@@ -49,15 +49,26 @@ def object_ray_viz(state):
         object.cycles_visibility.scatter = state
         object.cycles_visibility.shadow = state            
 
+def lock_objects(state):
+    for obj in bpy.context.selected_objects: 
+        obj.lock_location[0] = state
+        obj.lock_location[1] = state
+        obj.lock_location[2] = state
+        obj.lock_rotation[0] = state
+        obj.lock_rotation[1] = state
+        obj.lock_rotation[2] = state
+        obj.lock_scale[0] = state
+        obj.lock_scale[1] = state
+        obj.lock_scale[2] = state
+        
 class WeightMirroring(object):
     """
     Mirror Weight
     """
     
-    def __init__(self,side,prefix = 'def.'):
+    def __init__(self, side = 'LEFT'):
 
         #global variables
-        self.prefix = prefix
         if side == 'LEFT':
             self.left = True
         else: 
@@ -72,88 +83,56 @@ class WeightMirroring(object):
         self.group_index = []
         self.debug_num = []
         self.obj = bpy.context.object
+        self.selected_vertices = []
 
     def execute(self):
-        import re
         import time
          
         start_time = time.time()
         
-        self.split_vertices()
-        self.find_corresponding_vertex_group()
-        #Check if in Weight Paint Mode
+        symmetric = self.split_vertices()
+        if not symmetric: 
+            print("Not symmetric")
+        else: 
+            print("Symmetric")
+        #self.find_corresponding_vertex_group()
        
-        if bpy.context.active_object.mode != 'EDIT':
-            bpy.ops.object.mode_set(mode='EDIT')    
+        if bpy.context.active_object.mode != 'WEIGHT_PAINT':
+            bpy.ops.object.mode_set(mode='WEIGHT_PAINT')    
+            
         #Turn off x mirroring    
         self.obj.data.use_mirror_x = False 
         
-        if self.left: 
-            for vertex in self.left_vertices: 
-                #print("IT'S A LEFT VERTEX")
-                opp_vertex = self.find_opposite_vertex(vertex.co) #return the mirrored vertex    
-
-                num = 0 #for group index
-                if opp_vertex:
-                    for groups in opp_vertex.groups: 
-                        groups.weight = 0.0 #Set everything to zero first
-                        
-                    for g in vertex.groups:
-                        if g.weight: #if it has weight
-                            self.group_index = self.find_group_index(self.vgroup_index, vertex) #find L self.group_index
-                            self.opp_group_index = self.find_group_index(self.vgroup_opp_index, opp_vertex) #find R self.group_index
-                            if num in self.group_index: #it's a side vertex group eg. def._.L
-                                opp_index = self.opp_group_index[self.group_index.index(num)] #index of the opposite group
-                                print(g.weight)
-                                opp_vertex.groups[opp_index].weight = g.weight
-                                print(opp_vertex.groups[opp_index].weight)
-                                #opp_vertex.groups[num].weight = 0.0                            
-                            elif num in self.opp_group_index: #same side, do not copy
-                                pass #do nothing                     
+        selected_vertices = self.find_selected_vertices()
+        for vertex in self.left_vertices: 
+            #print("IT'S A LEFT VERTEX")
+            opp_vertex = self.find_opposite_vertex(vertex.co) #return the mirrored vertex                     
+            if opp_vertex:
+                for group in opp_vertex.groups: 
+                    group.weight = 0.0 #Set everything to zero first
+                for v_group in bpy.context.object.vertex_groups: 
+                    _name = None
+                    try: 
+                        v_group.weight(vertex.index)
+                    except RuntimeError:
+                        pass #Not in group 
+                    else:
+                        import re
+                        if v_group.weight(vertex.index):
+                            if v_group.name.endswith('.L') or v_group.name.endswith('.R'):
+                                #find opposite vertex group
+                                if v_group.name.endswith('.L'):
+                                    _name = str(v_group.name[:-1] + 'R')
+                                elif v_group.name.endswith('.R'):
+                                    _name = str(v_group.name[:-1] + 'L')
                             else:
-                                #neutral, copy same value as the self.left side
-                                for mg in opp_vertex.groups: 
-                                    if mg.group == g.group:
-                                        mg.weight = g.weight                                 
-                        num = num + 1
-                else: 
-                    self.debug_num.append(vertex.index) #vertex has no opposite
-                    
-        if not self.left:
-            for vertex in self.right_vertices: 
-                    #print("IT'S A LEFT VERTEX")
-                    opp_vertex = self.find_opposite_vertex(vertex.co) #return the mirrored vertex    
+                                _name = v_group.name
+                            try:
+                                bpy.context.object.vertex_groups[_name].add([opp_vertex.index], v_group.weight(vertex.index), 'REPLACE')
+                            except KeyError: 
+                                vgroup = bpy.context.object.vertex_groups.new(name = _name)
+                                vgroup.add([opp_vertex.index], v_group.weight(vertex.index), 'REPLACE')
 
-                    num = 0 #for group index
-                    if opp_vertex:
-                        for groups in opp_vertex.groups: 
-                            groups.weight = 0.0 #Set everything to zero first
-                            
-                        for g in vertex.groups:
-                            if g.weight: #if it has weight
-                                self.group_index = self.find_group_index(self.vgroup_index, vertex) #find L self.group_index
-                                self.opp_group_index = self.find_group_index(self.vgroup_opp_index, opp_vertex) #find R self.group_index
-                                if num in self.group_index: #it's a side vertex group eg. def._.L
-                                    opp_index = self.opp_group_index[self.group_index.index(num)] #index of the opposite group
-                                    print(g.weight)
-                                    opp_vertex.groups[opp_index].weight = g.weight
-                                    print(opp_vertex.groups[opp_index].weight)
-                                    #opp_vertex.groups[num].weight = 0.0
-                                    
-                                elif num in self.opp_group_index: #same side, do not copy
-                                    pass #do nothing
-                                
-                                else:
-                                    #neutral, copy same value as the self.left side
-                                    for mg in opp_vertex.groups: 
-                                        if mg.group == g.group:
-                                            mg.weight = g.weight                                 
-                            num = num + 1
-                    else: 
-                        self.debug_num.append(vertex.index) #vertex has no opposite
-                        
-        print(self.debug_num)
-        print(len(self.debug_num))
         print('FINISHED')
         print(time.time() - start_time)    
         
@@ -170,8 +149,8 @@ class WeightMirroring(object):
             opp = ".L"
         import re
         for vgroup in self.obj.vertex_groups:
-            if vgroup.name.startswith(self.prefix) and vgroup.name.endswith(end): #starts with 'def' ends with L
-                match = re.match("(%s\S+)%s" %(self.prefix, end), vgroup.name) #find the whole name
+            if vgroup.name.endswith(end): #starts with 'def' ends with L
+                match = re.match("(\w+\.\S+)%s" %end, vgroup.name) #find the whole name
                 if match: 
                         print(match.group(1))
                         match_name = match.group(1) + opp
@@ -190,48 +169,7 @@ class WeightMirroring(object):
                     break
                 num = num + 1           
         return temp_index
-           
-    def find_opposite_vertex(self, vertex_co):
-        """
-        Find the opposite vertex of the param vertex 
-        """
-        
-        found = False
-        x = 1
-        y = 1
-        z = 1
-        closest_vertex = None
-        
-        if self.left:
-            for opp_vertex in self.right_vertices: 
-                #Filter #1
-                #if round(opp_vertex.co[0],2) == round(-(vertex_co[0]),2) and round(opp_vertex.co[1],2) == round(vertex_co[1],2) and round(opp_vertex.co[2],2) == round(vertex_co[2],2):
-                min_x = abs(opp_vertex.co[0] + vertex_co[0])
-                min_y = abs(opp_vertex.co[1] - vertex_co[1])
-                min_z = abs(opp_vertex.co[2] - vertex_co[2])
-                #filter #2
-                if min_x < x and min_y < y and min_z < z:
-                    x = min_x
-                    y = min_y 
-                    z = min_z
-                    closest_vertex = opp_vertex
-                    
-        if not self.left: 
-            for opp_vertex in self.left_vertices: 
-                #Filter #1
-                #if round(opp_vertex.co[0],2) == round(-(vertex_co[0]),2) and round(opp_vertex.co[1],2) == round(vertex_co[1],2) and round(opp_vertex.co[2],2) == round(vertex_co[2],2):
-                min_x = abs(opp_vertex.co[0] + vertex_co[0])
-                min_y = abs(opp_vertex.co[1] - vertex_co[1])
-                min_z = abs(opp_vertex.co[2] - vertex_co[2])
-                #filter #2
-                if min_x < x and min_y < y and min_z < z:
-                    x = min_x
-                    y = min_y 
-                    z = min_z
-                    closest_vertex = opp_vertex
-            
-        return closest_vertex
-        
+          
     def split_vertices(self):
         """
         Split vertices for right vertices and left vertices 
@@ -241,3 +179,60 @@ class WeightMirroring(object):
                 self.left_vertices.append(vertex)
             if round(vertex.co.x, 5) < 0: 
                 self.right_vertices.append(vertex)
+        
+        if len(self.left_vertices) == len(self.right_vertices):
+            return True
+        else:
+            return False
+                       
+    def find_selected_vertices(self):
+    
+        selected_vertices = []
+        
+        obj = bpy.context.object
+        for vertex in obj.data.vertices:
+            if vertex.select:
+                selected_vertices.append(vertex)
+                
+        return selected_vertices
+                
+    def find_opposite_vertex(self, vertex_co):
+        """
+        Find the opposite vertex of the param vertex 
+        """
+        from mathutils import Vector
+        found = False
+        x = 1
+        y = 1
+        z = 1
+        max_distance = 0.5
+        closest_vertex = None
+        
+        if self.left:
+        #search for right
+            for opp_vertex in self.right_vertices: 
+         
+                min_x = abs(opp_vertex.co[0] + vertex_co[0])
+                min_y = abs(opp_vertex.co[1] - vertex_co[1])
+                min_z = abs(opp_vertex.co[2] - vertex_co[2])
+                num = Vector((min_x, min_y, min_z))
+                distance = num.magnitude
+                print(distance)
+                if distance < max_distance:
+                    max_distance = distance
+                    closest_vertex = opp_vertex
+                    
+        if not self.left: 
+        #search for left
+            for opp_vertex in self.left_vertices: 
+                min_x = abs(opp_vertex.co[0] + vertex_co[0])
+                min_y = abs(opp_vertex.co[1] - vertex_co[1])
+                min_z = abs(opp_vertex.co[2] - vertex_co[2])
+                num = Vector((min_x, min_y, min_z))
+                distance = num.magnitude
+                print(distance)
+                if distance < max_distance:
+                    max_distance = distance
+                    closest_vertex = opp_vertex
+                        
+        return closest_vertex

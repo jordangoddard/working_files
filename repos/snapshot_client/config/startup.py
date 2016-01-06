@@ -37,6 +37,8 @@ addon_startup_list = [
     "subdiv_tool",
     "wireframe_toggle",
     "DeadlineBlenderClient",
+    "custom_file_tab", #turns off remap relative. *Addon's cannot be unregistered. Remove the file to permanently remove the addon
+    "cubesurfer",
 ]
 
 import addon_utils
@@ -112,6 +114,9 @@ class SnapshotDBInfo(bpy.types.PropertyGroup):
     code = bpy.props.StringProperty(name="Code")
 
 bpy.utils.register_class(SnapshotDBInfo)
+
+# NOTE: we may need to add additional types to this list in order to properly catalog items in the blend files
+bpy.types.WindowManager.snapshot_db_info = bpy.props.PointerProperty(name="Snapshot DB Info", type=SnapshotDBInfo)
 bpy.types.Object.snapshot_db_info = bpy.props.PointerProperty(name="Snapshot DB Info", type=SnapshotDBInfo)
 bpy.types.Group.snapshot_db_info = bpy.props.PointerProperty(name="Snapshot DB Info", type=SnapshotDBInfo)
 bpy.types.Scene.snapshot_db_info = bpy.props.PointerProperty(name="Snapshot DB Info", type=SnapshotDBInfo)

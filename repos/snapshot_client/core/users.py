@@ -1,13 +1,14 @@
-# User object from Snapshot
+from .base.users import User as User_base
 
-class User(object):
-    def __init__(self, pk, url, username, email, is_staff, is_superuser):
-        self.pk = pk
-        self.url = url
-        self.username = username
-        self.email = email
-        self.is_staff = is_staff
-        self.is_superuser = is_superuser
+class User(User_base):
 
+    #PUT YOUR CODE HERE
     def __str__(self):
-        return "%s - %s" % (username, email)
+        return "%s - %s" %(self.username, self.email)
+        
+    def __repr__(self):
+        return self.__str__()
+        
+    pass
+
+

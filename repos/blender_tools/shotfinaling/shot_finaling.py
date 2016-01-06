@@ -1,5 +1,6 @@
-#Shot Finaling Module
+#Shot Finaling Module, 1, 2, 0
 #Author: Wayne Wu
+import bpy
 
 class CheckShot(object):
     
@@ -14,6 +15,7 @@ class CheckShot(object):
         self.error = []
         self.log = []
         self.check = []
+        self.libpath = []
         self.success = []
         self.fail = []
         
@@ -30,14 +32,12 @@ class CheckShot(object):
         self.check_visibility()    
         self.set_camera_clipping()
         self.check_unused_data()
+        self.check_lattice_empty()
         self.check_scene(self.scene)
    
         self.save_file()
         self.error_logging()
         
-        #import time
-        #time.sleep(10)
-        #quit("next one...")
         return {'FINISHED'}
           
     def append_shot(self):    
@@ -83,7 +83,7 @@ class CheckShot(object):
                 try:
                     group_name = obj.dupli_group.name
                 except: 
-                    self.log.append("%s has no dupli_group, object is not indirect" %obj.name)
+                    self.log.append("'%s' has no dupli_group, object is not indirect" %obj.name)
                 else: 
                     group = bpy.data.groups[group_name]
                     filepath = group.library.filepath
@@ -98,16 +98,25 @@ class CheckShot(object):
                         obj.hide = False 
                         obj.hide_select = False
                     if not self._check_filepath(filepath):
-                        self.error.append("%s is not pointing the the published version" %obj.name)
+                        self.error.append("'%s' is not pointing the the published version" %obj.name)
                         if self.fix: 
                             pass
-                    is_low_res = re.search('LOW', obj.name)
-                    if is_low_res:
-                        self.error.append("%s is in LOW resolution" %obj.name)
+                    if obj.name.endswith(('LOW', 'MID')):
+                        self.error.append("'%s' is in LOW or MID resolution" %obj.name)
                         if self.fix: 
-                            name = obj.name
-                            self.scene.objects.unlink(obj)
-                            self.link_in_groups(filepath, name)
+                            index = None
+                            if obj in self.character_list:
+                                index = self.character_list.index(obj)
+                                new_obj = self.link_in_groups(obj)
+                                if new_obj: 
+                                    self.character_list[index] = new_obj
+                            elif obj in self.set_list:
+                                index = self.set_list.index(obj)
+                                new_obj = self.link_in_groups(obj)
+                                if new_obj: 
+                                    self.set_list[index] = new_obj
+                            else: 
+                                self.link_in_groups(obj)
     
     def _check_filepath(self, filepath):
         """
@@ -131,7 +140,7 @@ class CheckShot(object):
                 try:
                     group_name = obj.dupli_group.name #the group name 
                 except: 
-                    self.log.append("%s has no dupli_group" %obj.name)
+                    self.log.append("'%s' has no dupli_group" %obj.name)
                 else: 
                     group = bpy.data.groups[group_name]
                     file = group.library.filepath
@@ -152,7 +161,7 @@ class CheckShot(object):
                 try:
                     group_name = obj.dupli_group.name #the group name 
                 except: 
-                    self.log.append("%s has no dupli_group" %obj.name)
+                    self.log.append("'%s' has no dupli_group" %obj.name)
                 else: 
                     group = bpy.data.groups[group_name]
                     file = group.library.filepath
@@ -231,23 +240,23 @@ class CheckShot(object):
                         #print(items)
                         for custom_property in items:
                             custom_prop_name = custom_property[0]
-                            if custom_prop_name != "_RNA_UI" and custom_prop_name != "Eye_world_lock":
+                            if custom_prop_name not in ["_RNA_UI", "Eye_world_lock", "lock_eye_world"]:
                                 if self.check_animation_data(obj, "pose.bones[\"ctl.god.C\"][\"%s\"]" %custom_prop_name):
                                     self.error.append("%s: Clear keyframes for %s" %(obj.name, custom_prop_name))
-                                if self.fix: 
-                                    self.remove_animation_data(obj, "pose.bones[\"ctl.god.C\"][\"%s\"]" %custom_prop_name)                                   
-                                if custom_prop_name == "Smoothing":
+                                    if self.fix: 
+                                        self.remove_animation_data(obj, "pose.bones[\"ctl.god.C\"][\"%s\"]" %custom_prop_name)                                   
+                                if custom_prop_name in ["Smoothing", "viewport_viz_smoothing"]:
                                     if god_node[custom_prop_name] is 0: 
                                         self.error.append("%s: Smoothing is off" %obj.name)
                                     if self.fix:
                                         god_node[custom_prop_name] = 1
                                         self.success.append("%s: Smoothing is on" %obj.name)
-                                elif custom_prop_name == "Proxy_pupil_viz":
+                                elif custom_prop_name in ["Proxy_pupil_viz", "viewport_viz_pupil_proxy"]:
                                     if god_node[custom_prop_name] is 1: 
-                                        self.error.append("%s:  Proxy_pupil_viz is on" %obj.name)
+                                        self.error.append("%s: Proxy_pupil_viz is on" %obj.name)
                                     if self.fix:
                                         god_node[custom_prop_name] = 0 
-                                        self.success.append("%s:  Proxy_pupil_viz is off" %obj.name)
+                                        self.success.append("%s: Proxy_pupil_viz is off" %obj.name)
                                 elif custom_prop_name == "Eye_Smoothing":
                                     if self.fix:
                                         god_node[custom_prop_name] = 1
@@ -257,43 +266,43 @@ class CheckShot(object):
                                         god_node[custom_prop_name] = 2
                                         self.success.append("%s: Eye_Smoothing level is set to 2" %obj.name)
                     else:
-                        self.log.append("%s has no custom properties" %god_node)                   
+                        self.log.append("'%s' has no custom properties" %god_node)                   
                 break
       
     def check_visibility(self):
         for obj in self.scene.objects:
             if obj.name.startswith('lkt') or obj.name.startswith('cam') or obj.name.startswith('fcs'):
                 if obj.hide: 
-                    self.error.append("%s is not visible" %obj.name)
+                    self.error.append("'%s' is not visible" %obj.name)
                     if self.fix: 
                         obj.hide = False
-                        self.success.append("%s is visible" %obj.name)
+                        self.success.append("'%s' is visible" %obj.name)
                 if obj.hide_select: 
-                    self.error.append("%s is not selectable" %obj.name)
+                    self.error.append("'%s' is not selectable" %obj.name)
                     if self.fix: 
                         obj.hide_select = False
-                        self.success.append("%s is selectable" %obj.name)
+                        self.success.append("'%s' is selectable" %obj.name)
       
     def check_animation_data(self, obj, datapath):
         try: 
             for fcurve in obj.animation_data.action.fcurves: 
                 if fcurve.data_path == datapath: 
                     return True 
-                else: 
-                    return False
+            return False
         except AttributeError:
-            self.log.append("%s has no animation data" %datapath)
+            self.log.append("'%s' has no animation data" %datapath)
+            return False
             
     def remove_animation_data(self, obj, datapath):
         try:
             for fcurve in obj.animation_data.action.fcurves: 
                 if fcurve.data_path == datapath: 
                     obj.animation_data.action.fcurves.remove(fcurve)
-                    self.success.append("%s: %s's keyframe is removed" %(obj, datapath))
+                    self.success.append("%s: %s's keyframe is removed" %(obj.name, datapath))
                     break
                     
         except AttributeError: 
-            self.log.append("%s has no animation data" %datapath)
+            self.log.append("'%s' has no animation data" %datapath)
         
     def set_camera_clipping(self):
         import mathutils
@@ -319,7 +328,7 @@ class CheckShot(object):
                         #OBJ LOCATION IS AT THE CENTER OF THE OBJECT
                         if (distance > min):
                             #print(corner_location)
-                            self.log.append("Distance from camera to %s is %f" %(obj.name, distance))
+                            self.log.append("Distance from camera to '%s' is '%f'" %(obj.name, distance))
                             min = distance
            
             if min > clip_end:
@@ -329,50 +338,44 @@ class CheckShot(object):
                     #self.success.append("End clipping is set to %f" %clip_end)
                     pass 
                 
-    def link_in_groups(self, path, obj_name): 
+    def link_in_groups(self, obj): 
         """"
         Given the link  of the blender file, link in the group in the blender file and select LOW res version if available
         """
         #self.center_cursor()
-        # Link in groups, LOW if possible
-        import re
-        print(path)
-        group_name = None
-        name = None
-        match = re.match(r'(\S+)_LOW', obj_name)#take out "_LOW"
-        if match:
-            name = match.group(1)
-        found = False
-        with bpy.data.libraries.load(path, link = True) as (data_from, data_to):
-            for group in data_from.groups:
-                if group == name:
-                    group_name = group
-                    found = True
-                    data_to.groups = [group_name]
-                    break
-        if found: 
-            self.success.append("%s is relinked" %group_name)  
-        if not found:
-            self.fail.append("Could not relink %s" %obj_name)
-            group_name = obj_name #link back the previous version
-             
-        """
-        Add a null object to duplicate the group (link the group back in the scene) *from BreakOut Tool
-        """
-        scene = bpy.context.scene
-        null = bpy.data.objects.new(group_name, None)
-        null.location = (0,0,0)
-        null.empty_draw_type = 'PLAIN_AXES'
-        null.dupli_type = 'GROUP'
-        for group in bpy.data.groups: 
-            if group_name == group.name and group.library.filepath == path: 
-                null.dupli_group = group
-                break
-        group_name = null.name        
-        scene.objects.link(null)
-        scene.update()
-        return group_name  
-    
+        
+        if bpy.context.active_object.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')  
+        
+        group = obj.dupli_group      
+        bpy.context.scene.cursor_location.xyz = (0,0,0)
+        current_res = None
+        if group.name.endswith('LOW'):
+            current_res = 'LOW'
+            group_name = group.name[:-4] #remove suffix
+        elif group.name.endswith('MID'):
+            current_res = 'MID'
+            group_name = group.name[:-4] #remove suffix
+        else: 
+            current_res = 'HIGH'
+            group_name = group.name 
+        resolution = 'HIGH'
+        if current_res != resolution:
+            bpy.context.scene.objects.unlink(obj) #delete object from scene temporarily   
+            new_group_name = group_name
+            dir = group.library.filepath + '\\Group\\'
+                #error = self.link_in_groups(group.library.filepath, bpy.context.scene.asset_resolution,group_name)   
+            try: 
+                bpy.ops.wm.link(filename= new_group_name, directory = dir, relative_path = False)
+            except: 
+                self.fail.append("Could not relink '%s'" %obj_name)
+                bpy.context.scene.link(obj) #link back the object 
+            else: 
+                self.success.append("%s is relinked" %group_name)  
+                bpy.data.groups.remove(group) #remove previous group completely
+                bpy.data.objects.remove(obj) #remove old object permanently 
+                return bpy.context.scene.objects[new_group_name]
+        
     def compare_string(self, item1, item2):
         """
         Compare two strings and output similarities
@@ -381,24 +384,43 @@ class CheckShot(object):
         return SequenceMatcher(None, item1, item2).ratio()
     
     def check_unused_data(self):
-        for obj in self.scene.objects: 
-            
+        for obj in self.scene.objects:
+            useful = False
             if not obj.name.startswith('lkt') and not obj.name.startswith('cam') and not obj.name.startswith('fcs') and not obj.name.startswith('grp'):
-                try:   
-                    obj.users_group.name
-                except: 
-                    self.check.append("%s might be an unneeded object" %obj.name)
-                else:
-                    if not obj.users_group.name.startswith("grp.stuff"):
-                        self.check.append("%s might be an unneeded object")
-                        if self.fix:
-                            #self.scene.objects.unlink(obj)
-                            pass                
-    
+                for grp in obj.users_group:
+                    if grp.name.startswith("grp.stuff"):
+                       useful= True 
+                if not useful:
+                    self.check.append("'%s' might be an unneeded object" %obj.name)
+                    if self.fix:
+                        #self.scene.objects.unlink(obj)
+                        pass
+
+    """ 
+    REQ hgagne: David Russel, Mon 2015-11-30 12:38 PM
+    Want to see the group in which they were linked in the log too.
+    """ 
+    def check_lattice_empty(self):
+        obj_type_list = ['EMPTY', 'LATTICE']
+        for obj in self.scene.objects:
+            useful = False
+            if obj.type in obj_type_list:
+                if obj.library:
+                    if obj.library.filepath:
+                        useful= True 
+                        self.libpath.append("'%s' library file path is '%s'" % (obj.name, obj.library.filepath))
+                    else:
+                        self.libpath.append("'%s' has no library file path" % (obj.name, obj.library.filepath))
+            if not useful:
+                # self.libpath.append("'%s' might be an unneeded object" %obj.name)
+                if self.fix:
+                    # placeholder for fixing if required/identified
+                    pass
+
     def check_scene(self, scene):
 
         total_frame = (self.scene.frame_end - self.scene.frame_start) + 1
-        self.check.append("Current frame number is %f " %total_frame)
+        self.check.append("Scene starts at frame '%s' and ends at frame '%s'; for a total frame count of '%s' " % (self.scene.frame_start, self.scene.frame_end , total_frame))
         #Open up connection with shotgun
             #retrieve frame data
             #if different: 
@@ -434,7 +456,7 @@ class CheckShot(object):
             sandbox_path = "%s\\%s" %(sandbox_dir, new_filename)
             print(sandbox_path)
             bpy.ops.wm.save_as_mainfile(filepath = sandbox_path, relative_remap = False)
-            self.success.append("File is saved as %s" %sandbox_path)
+            self.success.append("File is saved as '%s'" %sandbox_path)
 
     def _filenum_increment(self, filename):
         
@@ -482,6 +504,9 @@ class CheckShot(object):
         file.write("\n")
         for i in self.check: 
             file.write("-%s- CHECK: %s\n" %(self.scene.name, i))
+        file.write("\n")    
+        for i in self.libpath: 
+            file.write("-%s- LIB: %s\n" %(self.scene.name, i))
         file.write("\n")    
         for i in self.success: 
             file.write("-%s- SUCCESS: %s\n" %(self.scene.name, i))

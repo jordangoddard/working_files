@@ -5,7 +5,7 @@
 import bpy
 import re    
     
-def bone_shape(shape = None):
+def bone_shape(shape = None, state = False):
     """
     Assign or remove bone_shape for the selected bones
     """
@@ -17,7 +17,14 @@ def bone_shape(shape = None):
             item.custom_shape = bpy.context.scene.objects[shape]
         else:
             item.custom_shape = shape  
-
+        try:
+            bpy.context.object.data.bones[item.name].show_wire = state
+        except: 
+            #not allowed
+            pass 
+            
+    return {'FINISHED'}
+    
 def bone_flip(exception):         
     """
     Flip selected bones upside down
@@ -141,18 +148,14 @@ def bone_parenting(change_name, new_bone_prefix, old_bone_prefix, size_scale):
         else: 
             new_bone_name = bone.name
         new_bone = amt.edit_bones.new(new_bone_name)
-        print(bone.head)
         new_bone.head = bone.head
-        print(bone.tail)
         new_bone.tail = bone.tail
         directional_vector = new_bone.tail - new_bone.head
-        print(directional_vector)
         directional_vector = (size_scale-1)*directional_vector
-        print(directional_vector)
         new_bone.tail = new_bone.tail + directional_vector
-        print(new_bone.tail)
-        new_bone.parent = bone.parent
-        new_bone.parent.use_connect = False
+        if bone.parent: 
+            new_bone.parent = bone.parent
+            new_bone.parent.use_connect = False
         new_bone.use_inherit_rotation = True
         new_bone.use_inherit_scale = True
         new_bone.use_local_location = True

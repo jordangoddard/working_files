@@ -83,6 +83,7 @@ class check_file_integrity(object):
             self.focus_check()
             self.look_at_check()
             self.indirect_assets_check()
+            self.check_special_characters()
             self.extra_asset_check()
             self.grp_transform_check()
             self.write_asset_log()
@@ -96,6 +97,7 @@ class check_file_integrity(object):
                 self.focus_check()
                 self.look_at_check()
                 self.indirect_assets_check()
+                self.check_special_characters()
                 self.extra_asset_check()
                 self.grp_transform_check()
                 self.write_asset_log()
@@ -131,6 +133,21 @@ class check_file_integrity(object):
             self.error_log.append('There is no camera in this shot! Please add a camera named "cam.%s"'%self.scene_name)
         if problem_three:
             self.error_log.append("The camera in the scene is not of type CAMERA!")
+
+    def check_special_characters(self):
+        for group in bpy.data.groups:
+            path_name = "%s"%group.library.filepath
+            if "ozzy" in path_name:
+                if "ozzy_a" not in path_name:
+                    self.error_log.append("%s has ozzy, but should have ozzy_a"%scene.name)
+            if "chester" in path_name:
+                if "chester_a" not in path_name:
+                    self.error_log.append("%s has chester, but should have chester_a"%scene.name)
+            if "grunt" in path_name:
+                if "grunt_a" in path_name:
+                    self.error_log.append("%s has grunt_a, but should have grunt_b"%scene.name)
+                elif "grunt_b" not in path_name:
+                    self.error_log.append("%s has grunt, but should have grunt_b"%scene.name)
 
     def focus_check(self): #jordan
         """
@@ -206,6 +223,12 @@ class check_file_integrity(object):
                                     pass
                                 else:
                                     self.error_log.append("%s is not linked" %(obj.name))
+                                    try:
+                                        par = "grp%s_proxy"%obj.parent.name[3:]
+                                    except:
+                                        pass
+                                    else:
+                                        self.error_log.append("%s is a broken part of the rig for %s"%(obj.name, par))
                     except:
                         pass                                                       # print('NO DUPLI GROUP')
             else: 
@@ -396,15 +419,16 @@ def register():
     bpy.utils.register_class(integrity_checker_gui)
     bpy.utils.register_class(check_current_shot)
     bpy.utils.register_class(check_all_shots)
-    bpy.utils.register_class(check_file_integrity)
+    #bpy.utils.register_class(check_file_integrity)
 
 def unregister():
     bpy.utils.register_class(integrity_checker_gui)
     bpy.utils.register_class(check_current_shot)
     bpy.utils.register_class(check_all_shots)
-    bpy.utils.register_class(check_file_integrity)
+    #bpy.utils.register_class(check_file_integrity)
 
 def directory_creation():
+    import os
     new_path = ["C:\\Temp\\breakout_tool_data", "C:\\Temp\\breakout_tool_data\\error_logs"]
     if not os.path.exists(new_path[0]):
         os.makedirs(new_path[0])

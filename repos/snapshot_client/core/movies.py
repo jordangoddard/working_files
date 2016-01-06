@@ -1,14 +1,14 @@
-__author__ = 'Jeff.Bell'
+from .base.movies import Movie as Movie_base
 
-class Movie(object):
+class Movie(Movie_base):
+
+    #PUT YOUR CODE HERE
+
     """
     This is a stand-in class that needs to be replaced - placeholder for now
     """
-    def __init__(self, playblast):
-        self.playblast = playblast
-
     def __str__(self):
-        return "%s - movie" % playblast.asset.code
+        return "%s - movie" % self.asset.code
 
     def play(self):
         """
@@ -17,3 +17,7 @@ class Movie(object):
         """
         # rv_info = self.playblast.asset.show.preferences.rv_info
         pass
+        
+    
+
+

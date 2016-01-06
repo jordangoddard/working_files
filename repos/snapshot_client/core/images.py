@@ -1,16 +1,10 @@
-__author__ = 'Jeff.Bell'
+from .base.images import Image as Image_base
 
-class Image(object):
-    def __init__(self, pk, url, name, filepath, assets, width, height, created, modified):
-        self.pk = pk
-        self.url = url
-        self.name = name
-        self.filepath = filepath
-        self.assets = assets
-        self.created = created
-        self.modified = modified
-        self.width = width
-        self.height = height
+class Image(Image_base):
+
+    #PUT YOUR CODE HERE
 
     def __str__(self):
         return ("%s > %s > %s.%s" (self.name, self.filepath, self.width, self.height))
+
+

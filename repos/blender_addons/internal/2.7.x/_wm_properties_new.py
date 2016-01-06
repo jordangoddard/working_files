@@ -54,8 +54,8 @@ class WM_OT_properties_new_edit(Operator):
     data_path = rna_path #mandatory   
     new_prop_name = rna_property #optional
     value = rna_value #mandatory
-    min = rna_min #optional
-    max = rna_max #optional
+    min = rna_min
+    max = rna_max
     description = StringProperty(
             name="Tooltip",
             )
@@ -73,7 +73,6 @@ class WM_OT_properties_new_edit(Operator):
         if prop_old is None:
             self.report({'ERROR'}, "Direct execution not supported")
             return {'CANCELLED'}
-
         try:
             value_eval = eval(value)
             # assert else None -> None, not "None", see [#33431]
@@ -101,9 +100,7 @@ class WM_OT_properties_new_edit(Operator):
         _last_prop[:] = [prop]
 
         prop_type = type(item[prop])
-
-        prop_ui = rna_idprop_ui_prop_get(item, prop)
-
+        prop_ui = rna_idprop_ui_prop_get(item, prop)        
         if prop_type in {float, int}:
             prop_ui["soft_min"] = prop_ui["min"] = prop_type(self.min)
             prop_ui["soft_max"] = prop_ui["max"] = prop_type(self.max)
@@ -175,7 +172,7 @@ class WM_OT_properties_new_add(Operator):
             return prop_new
 
         prop = unique_name(item.keys())
-
+        
         item[prop] = eval(self.default_value)
 
         prop_type = type(item[prop])
@@ -188,7 +185,49 @@ class WM_OT_properties_new_add(Operator):
             prop_ui["soft_max"] = prop_ui["max"] = prop_type(self.default_max)
         
         return {'FINISHED'}
+
+class WM_OT_properties_tag_add(Operator):
+    bl_idname = "wm.properties_tag_add"
+    bl_label = "Add Tag Property"
+    bl_options = {'UNDO'}
+
+    data_path = rna_path #string property
+    prop_name = StringProperty(name= "Tag Name", default = "prop")
+    default_value = StringProperty(name = "Tag", default = "prop_name")
     
+    def execute(self, context):
+        from rna_prop_ui import rna_idprop_ui_prop_get
+
+        data_path = self.data_path
+        item = eval("context.%s" % data_path)
+
+        def unique_name(names):
+            prop = self.prop_name
+            prop_new = prop
+            i = 1
+            while prop_new in names:
+                prop_new = prop + str(i)
+                i += 1
+
+            return prop_new
+
+        prop = unique_name(item.keys())
+        
+        item[prop] = self.default_value
+
+        prop_type = type(item[prop])
+        
+        # not essential, but without this we get [#31661]
+        prop_ui = rna_idprop_ui_prop_get(item, prop) #create the prop_ui
+        prop_ui["soft_min"] = prop_ui["min"] = 0.0
+        prop_ui["soft_max"] = prop_ui["max"] = 1.0
+        # if prop_type in {float, int}:
+            # prop_ui["soft_min"] = prop_ui["min"] = prop_type(self.default_min)
+            # prop_ui["soft_max"] = prop_ui["max"] = prop_type(self.default_max)
+        
+        return {'FINISHED'}
+
+        
 def register():
     bpy.utils.register_module(__name__)
     

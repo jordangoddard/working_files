@@ -16,11 +16,11 @@ class Log(object):
         def __init__(self, log_path="C:/temp/snapshot_logs/", log_to_file=False):
             self.log_path = log_path
             self.log_name = None
-            print("Log to file: %s" % log_to_file)
+            #print("Log to file: %s" % log_to_file)
             self.log_to_file = log_to_file
             self._setup()
 
-        def info(self, text, message="INFO"):
+        def info(self, text, message="   INFO"):
             print("%s: %s" % (message, text))
             if self.log_to_file:
                 logf = open("%s/%s" % (self.log_path, self.log_name), "a")
@@ -30,14 +30,14 @@ class Log(object):
         def warning(self, text, message="WARNING"):
             self.info(message=message, text=text)
 
-        def error(self, text, message="ERROR"):
+        def error(self, text, message="  ERROR"):
             self.info(message=message, text=text)
 
         def _setup(self):
             import os
             import datetime
             # Make sure the output path exists
-            print("Log path: %s" % self.log_path)
+            #print("Log path: %s" % self.log_path)
             if not os.path.exists(self.log_path):
                 try:
                     os.makedirs(self.log_path, 0x0777)
